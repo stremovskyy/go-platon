@@ -91,10 +91,6 @@ Please make sure to update tests as appropriate.
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Security
-
-For security issues, please email security@yourdomain.com instead of using the issue tracker.
-
 ## Acknowledgments
 
 - Platon.ua for providing the payment gateway service
