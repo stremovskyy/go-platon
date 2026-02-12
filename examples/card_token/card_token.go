@@ -26,58 +26,58 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/google/uuid"
 
 	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/currency"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
-	"github.com/stremovskyy/go-platon/internal/utils"
 	"github.com/stremovskyy/go-platon/log"
 )
 
 func main() {
 	cfg := config.MustLoad()
-	client := go_platon.NewDefaultClient()
+	var client go_platon.Platon = go_platon.NewDefaultClient()
+	client.SetLogLevel(log.LevelDebug)
 
 	merchant := &go_platon.Merchant{
-		Name:            cfg.MerchantName,
 		MerchantID:      cfg.MerchantID,
 		MerchantKey:     cfg.MerchantKey,
 		SecretKey:       cfg.SecretKey,
 		SuccessRedirect: cfg.SuccessRedirect,
 		FailRedirect:    cfg.FailRedirect,
-		TermsURL:        utils.Ref("https://google.com"),
+		TermsURL:        ref("https://merchant.example/3ds"),
 	}
 
-	orderID := uuid.New().String()
+	orderID := uuid.NewString()
 
 	req := &go_platon.Request{
 		Merchant: merchant,
 		PaymentMethod: &go_platon.PaymentMethod{
 			Card: &go_platon.Card{
-				Token: utils.Ref(cfg.CardToken),
+				Token: ref(cfg.CardToken),
 			},
 		},
 		PaymentData: &go_platon.PaymentData{
-			PaymentID:   utils.Ref(orderID),
+			PaymentID:   ref(orderID),
 			Amount:      100,
 			Currency:    currency.UAH,
-			Description: "One-click token payment: " + orderID,
+			Description: "Simple card token payment example",
 		},
 		PersonalData: &go_platon.PersonalData{
-			Email: utils.Ref(cfg.PayerEmail),
+			Email: ref(cfg.PayerEmail),
 		},
 	}
-
-	client.SetLogLevel(log.LevelDebug)
 
 	resp, err := client.Payment(req)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		fmt.Println("card token payment error:", err)
+		return
 	}
 
 	resp.PrettyPrint()
+}
+
+func ref(value string) *string {
+	return &value
 }

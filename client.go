@@ -25,73 +25,71 @@
 package go_platon
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+	"regexp"
 	"strings"
+	"time"
 	"unicode"
 
 	"github.com/stremovskyy/go-platon/consts"
-	"github.com/stremovskyy/go-platon/internal/http"
+	internalhttp "github.com/stremovskyy/go-platon/internal/http"
 	"github.com/stremovskyy/go-platon/log"
 	"github.com/stremovskyy/go-platon/platon"
 	"github.com/stremovskyy/recorder"
 )
 
 type client struct {
-	platonClient *http.Client
+	platonClient *internalhttp.Client
 }
+
+var _ Platon = (*client)(nil)
 
 func (c *client) SetLogLevel(levelDebug log.Level) {
 	log.SetLevel(levelDebug)
 }
 
 func NewDefaultClient() Platon {
-	return &client{
-		platonClient: http.NewClient(http.DefaultOptions()),
-	}
+	return NewClient()
 }
 
 func NewClientWithRecorder(rec recorder.Recorder) Platon {
-	return &client{
-		platonClient: http.NewClient(http.DefaultOptions()).WithRecorder(rec),
-	}
+	return NewClient(WithRecorder(rec))
 }
 
-func (c *client) Verification(request *Request) (*platon.Result, error) {
+func (c *client) Verification(request *Request, runOpts ...RunOption) (*url.URL, error) {
 	if request == nil {
 		return nil, platon.ErrRequestIsNil
 	}
-	createTokenRequest := platon.NewRequest(platon.ActionCodeSALE).WithAuth(request.GetAuth()).
-		WithClientKey(request.GetMerchantKey()).
-		WithChannelNoAmountVerification().
-		WithOrderID(request.GetPaymentID()).
-		WithOrderAmount(platon.VerifyNoAmount.String()).
-		ForCurrency(request.GetCurrency()).
-		WithDescription(request.GetDescription()).
-		WithPayerIP(request.GetClientIP()).
-		WithTermsURL(request.GetTermsURL()).
-		WithCardNumber(request.GetCardNumber()).
-		WithCardExpMonth(request.GetCardExpMonth()).
-		WithCardExpYear(request.GetCardExpYear()).
-		WithCardCvv2(request.GetCardCvv2()).
-		WithPayerEmail(request.GetPayerEmail()).
-		WithPayerPhone(request.GetPayerPhone()).
-		WithReqToken(true).
-		WithRecurringInitFlag(true).
-		UseAsync().
-		SignForAction(platon.HashTypeVerification)
 
-	response, err := c.platonClient.Api(createTokenRequest, consts.ApiVerifyURL)
+	form, err := BuildClientServerVerificationForm(request)
 	if err != nil {
-		return nil, fmt.Errorf("verification API call: %w", err)
+		return nil, err
 	}
 
-	return response.Result, nil
+	opts := collectRunOptions(runOpts)
+	if opts.isDryRun() {
+		opts.handleDryRun(consts.ApiPaymentAuthURL, form)
+		return nil, nil
+	}
+
+	return resolveClientServerVerificationURL(form)
 }
 
-func (c *client) Status(request *Request) (*platon.Response, error) {
+func (c *client) VerificationLink(request *Request, runOpts ...RunOption) (*url.URL, error) {
+	return c.Verification(request, runOpts...)
+}
+
+func (c *client) Status(request *Request, runOpts ...RunOption) (*platon.Response, error) {
 	if request == nil {
 		return nil, platon.ErrRequestIsNil
 	}
+
+	opts := collectRunOptions(runOpts)
 
 	transID := request.GetPlatonTransID()
 	if transID == nil || *transID == "" {
@@ -115,13 +113,21 @@ func (c *client) Status(request *Request) (*platon.Response, error) {
 	}
 	statusRequest.WithCardHashPart(&cardHashPart)
 
+	if opts.isDryRun() {
+		opts.handleDryRun(consts.ApiGetTransStatus, statusRequest)
+		return nil, nil
+	}
+
 	return c.platonClient.Api(statusRequest, consts.ApiGetTransStatus)
 }
 
-func (c *client) SubmerchantAvailableForSplit(request *Request) (bool, error) {
+func (c *client) SubmerchantAvailableForSplit(request *Request, runOpts ...RunOption) (bool, error) {
 	if request == nil {
 		return false, platon.ErrRequestIsNil
 	}
+
+	opts := collectRunOptions(runOpts)
+
 	if request.GetMerchantKey() == "" {
 		return false, fmt.Errorf("split availability: merchant client_key is required")
 	}
@@ -135,6 +141,11 @@ func (c *client) SubmerchantAvailableForSplit(request *Request) (bool, error) {
 		WithClientKey(request.GetMerchantKey()).
 		WithSubmerchantID(submerchantID).
 		SignForAction(platon.HashTypeGetSubmerchant)
+
+	if opts.isDryRun() {
+		opts.handleDryRun(consts.ApiGetSubmerchant, apiRequest)
+		return false, nil
+	}
 
 	response, err := c.platonClient.Api(apiRequest, consts.ApiGetSubmerchant)
 	if err != nil {
@@ -156,14 +167,21 @@ func (c *client) SubmerchantAvailableForSplit(request *Request) (bool, error) {
 	}
 }
 
-func (c *client) Payment(request *Request) (*platon.Response, error) {
+func (c *client) Payment(request *Request, runOpts ...RunOption) (*platon.Response, error) {
 	if request == nil {
 		return nil, platon.ErrRequestIsNil
 	}
 
+	opts := collectRunOptions(runOpts)
+
 	apiRequest, apiURL, err := c.buildIAPaymentRequest(request, false)
 	if err != nil {
 		return nil, err
+	}
+
+	if opts.isDryRun() {
+		opts.handleDryRun(apiURL, apiRequest)
+		return nil, nil
 	}
 
 	response, err := c.platonClient.Api(apiRequest, apiURL)
@@ -174,14 +192,21 @@ func (c *client) Payment(request *Request) (*platon.Response, error) {
 	return response, nil
 }
 
-func (c *client) Hold(request *Request) (*platon.Response, error) {
+func (c *client) Hold(request *Request, runOpts ...RunOption) (*platon.Response, error) {
 	if request == nil {
 		return nil, platon.ErrRequestIsNil
 	}
 
+	opts := collectRunOptions(runOpts)
+
 	apiRequest, apiURL, err := c.buildIAPaymentRequest(request, true)
 	if err != nil {
 		return nil, err
+	}
+
+	if opts.isDryRun() {
+		opts.handleDryRun(apiURL, apiRequest)
+		return nil, nil
 	}
 
 	response, err := c.platonClient.Api(apiRequest, apiURL)
@@ -295,10 +320,12 @@ func (c *client) buildIAPaymentRequest(request *Request, hold bool) (*platon.Req
 	return nil, "", fmt.Errorf("payment: unsupported payment method (expected card PAN, CARD_TOKEN, Apple Pay, or Google Pay data)")
 }
 
-func (c *client) Capture(request *Request) (*platon.Response, error) {
+func (c *client) Capture(request *Request, runOpts ...RunOption) (*platon.Response, error) {
 	if request == nil {
 		return nil, fmt.Errorf("capture: %w", platon.ErrRequestIsNil)
 	}
+
+	opts := collectRunOptions(runOpts)
 
 	transID := request.GetPlatonTransID()
 	if transID == nil || *transID == "" {
@@ -337,13 +364,20 @@ func (c *client) Capture(request *Request) (*platon.Response, error) {
 		WithCardHashPart(&cardHashPart).
 		SignForAction(platon.HashTypeCapture)
 
+	if opts.isDryRun() {
+		opts.handleDryRun(consts.ApiPostUnqURL, apiRequest)
+		return nil, nil
+	}
+
 	return c.platonClient.Api(apiRequest, consts.ApiPostUnqURL)
 }
 
-func (c *client) Refund(request *Request) (*platon.Response, error) {
+func (c *client) Refund(request *Request, runOpts ...RunOption) (*platon.Response, error) {
 	if request == nil {
 		return nil, fmt.Errorf("refund: %w", platon.ErrRequestIsNil)
 	}
+
+	opts := collectRunOptions(runOpts)
 
 	transID := request.GetPlatonTransID()
 	if transID == nil || *transID == "" {
@@ -391,15 +425,31 @@ func (c *client) Refund(request *Request) (*platon.Response, error) {
 	}
 
 	apiRequest.SignForAction(platon.HashTypeCreditVoid)
+
+	if opts.isDryRun() {
+		opts.handleDryRun(consts.ApiPostUnqURL, apiRequest)
+		return nil, nil
+	}
+
 	return c.platonClient.Api(apiRequest, consts.ApiPostUnqURL)
 }
 
-func (c *client) Credit(request *Request) (*platon.Response, error) {
+func (c *client) Credit(request *Request, runOpts ...RunOption) (*platon.Response, error) {
 	if request == nil {
 		return nil, fmt.Errorf("credit: %w", platon.ErrRequestIsNil)
 	}
 
+	opts := collectRunOptions(runOpts)
+	if opts.isDryRun() {
+		opts.handleDryRun(consts.ApiPostUnqURL, request)
+		return nil, nil
+	}
+
 	return nil, fmt.Errorf("credit: %w", platon.ErrNotImplemented)
+}
+
+func (c *client) ParseWebhookXML(data []byte) (*platon.Payment, error) {
+	return platon.ParsePaymentXML(data)
 }
 
 func cardHashPartFromPAN(pan string) (string, error) {
@@ -419,4 +469,71 @@ func digitsOnly(s string) string {
 		}
 	}
 	return b.String()
+}
+
+func resolveClientServerVerificationURL(form *platon.ClientServerVerificationForm) (*url.URL, error) {
+	if form == nil {
+		return nil, fmt.Errorf("verification form is nil")
+	}
+
+	values := url.Values{}
+	for key, value := range form.Fields {
+		values.Set(key, value)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, form.Endpoint, strings.NewReader(values.Encode()))
+	if err != nil {
+		return nil, fmt.Errorf("cannot build verification request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	httpClient := &http.Client{
+		Timeout: 30 * time.Second,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("verification request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if location := strings.TrimSpace(resp.Header.Get("Location")); location != "" {
+		return parsePurchaseURL(location)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return nil, fmt.Errorf("cannot read verification response body: %w", err)
+	}
+
+	absRe := regexp.MustCompile(`https://secure\.platononline\.com/payment/purchase\?token=[A-Za-z0-9]+`)
+	if match := absRe.Find(body); match != nil {
+		return parsePurchaseURL(string(match))
+	}
+
+	relRe := regexp.MustCompile(`/payment/purchase\?token=[A-Za-z0-9]+`)
+	if match := relRe.Find(body); match != nil {
+		return parsePurchaseURL("https://secure.platononline.com" + string(match))
+	}
+
+	errMsg := fmt.Sprintf("verification purchase URL was not returned (status=%d)", resp.StatusCode)
+	if bytes.Contains(bytes.ToLower(body), []byte("<title>error")) {
+		errMsg += "; gateway returned error page (check merchant key, secret/signature, and callback URL)"
+	}
+
+	return nil, errors.New(errMsg)
+}
+
+func parsePurchaseURL(raw string) (*url.URL, error) {
+	parsedURL, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("cannot parse verification URL %q: %w", raw, err)
+	}
+	if !parsedURL.IsAbs() {
+		return nil, fmt.Errorf("verification URL is not absolute: %q", raw)
+	}
+	return parsedURL, nil
 }

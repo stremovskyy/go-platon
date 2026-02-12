@@ -1,7 +1,30 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2024 Anton Stremovskyy
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 package http
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -21,183 +44,126 @@ import (
 )
 
 type Client struct {
-	client         *http.Client
-	options        *Options
-	logger         *log.Logger
-	applePayLogger *log.Logger
-	recorder       recorder.Recorder
+	client   *http.Client
+	options  *Options
+	logger   *log.Logger
+	recorder recorder.Recorder
 }
 
-// Api handles the standard Platon API request.
-func (c *Client) Api(apiRequest *platon.Request, url string) (*platon.Response, error) {
-	return c.sendURLEncodedRequest(url, apiRequest, c.logger)
+const maxResponseBodyBytes = 4 << 20 // 4 MiB
+
+// Api handles Platon API request.
+func (c *Client) Api(apiRequest *platon.Request, apiURL string) (*platon.Response, error) {
+	return c.sendURLEncodedRequest(apiURL, apiRequest, c.logger)
 }
 
-// WithRecorder attaches a recorder to the client and returns the client for method chaining.
+// WithRecorder attaches a recorder to the client.
 func (c *Client) WithRecorder(rec recorder.Recorder) *Client {
 	c.recorder = rec
+
 	return c
 }
 
-// sendRequest handles sending an HTTP request and processing the response.
-func (c *Client) sendRequest(apiURL string, unsignedRequest *platon.Request, logger *log.Logger) (*platon.Response, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), c.options.Timeout)
-	defer cancel()
-	requestID := uuid.New().String()
-	logger.Debug("API URL: %v", apiURL)
-	logger.Debug("Request ID: %v", requestID)
+// SetClient allows replacing the underlying net/http client.
+func (c *Client) SetClient(cl *http.Client) {
+	c.client = cl
+}
 
-	signedRequest, err := unsignedRequest.SignAndPrepare()
-	if err != nil {
-		return nil, c.logAndReturnError("cannot sign request", err, logger, requestID, nil)
-	}
-
-	jsonBody, err := json.Marshal(signedRequest)
-	if err != nil {
-		return nil, c.logAndReturnError("cannot marshal request", err, logger, requestID, nil)
-	}
-
-	logger.Debug("Request: %v", string(jsonBody))
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewBuffer(jsonBody))
-	if err != nil {
-		return nil, c.logAndReturnError("cannot create request", err, logger, requestID, nil)
-	}
-
-	c.setCommonHeaders(req, requestID)
-	req.Header.Set("Content-Type", "application/json")
-
-	// Generate and log cURL command
-	curlCmd := generateCurlCommand(req, jsonBody)
-	logger.Debug("cURL equivalent: %s", curlCmd)
-
-	tags := make(map[string]string)
-	if signedRequest != nil {
-		tags["action"] = string(signedRequest.Action)
-	}
-	if c.recorder != nil {
-		if err := c.recorder.RecordRequest(ctx, nil, requestID, jsonBody, tags); err != nil {
-			logger.Error("cannot record request: %v", err)
-		}
-	}
-
-	resp, err := c.client.Do(req)
-	if err != nil {
-		return nil, c.logAndReturnError("cannot send request", err, logger, requestID, tags)
-	}
-	defer c.safeClose(resp.Body, logger)
-
-	raw, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, c.logAndReturnError("cannot read response", err, logger, requestID, tags)
-	}
-
-	logger.Debug("Response status: %v", resp.StatusCode)
-
-	if len(raw) == 0 {
-		return nil, c.logAndReturnError("No response bytes", fmt.Errorf("empty response"), logger, requestID, tags)
-	}
-
-	logger.Debug("Response: %v", string(raw))
-
-	if c.recorder != nil {
-		if err := c.recorder.RecordResponse(ctx, nil, requestID, raw, tags); err != nil {
-			logger.Error("cannot record response: %v", err)
-		}
-	}
-
-	response, err := platon.UnmarshalJSONResponse(raw)
-	if err != nil {
-		return nil, c.logAndReturnError("cannot unmarshal response", err, logger, requestID, tags)
-	}
-
-	return response, response.GetError()
+// SetRecorder allows setting a recorder explicitly.
+func (c *Client) SetRecorder(r recorder.Recorder) {
+	c.recorder = r
 }
 
 func (c *Client) sendURLEncodedRequest(apiURL string, unsignedRequest *platon.Request, logger *log.Logger) (*platon.Response, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), c.options.Timeout)
-	defer cancel()
 	requestID := uuid.New().String()
 	logger.Debug("API URL: %v", apiURL)
 	logger.Debug("Request ID: %v", requestID)
+
+	if unsignedRequest == nil {
+		return nil, c.logAndReturnError("request is nil", platon.ErrRequestIsNil, logger, requestID, nil)
+	}
 
 	signedRequest, err := unsignedRequest.SignAndPrepare()
 	if err != nil {
 		return nil, c.logAndReturnError("cannot sign request", err, logger, requestID, nil)
 	}
 
-	// Convert the request to a map for URL encoding
-	requestMap := signedRequest.ToMap()
+	encodedForm, err := encodeRequestMap(signedRequest.ToMap())
 	if err != nil {
-		return nil, c.logAndReturnError("cannot convert request to map", err, logger, requestID, nil)
+		return nil, c.logAndReturnError("cannot encode request", err, logger, requestID, nil)
 	}
+	logger.Debug("Request: %v", encodedForm)
 
-	// Create form data with URL encoding
-	formValues := url.Values{}
-	for key, value := range requestMap {
-		// Convert values to string as needed
-		strValue := ""
-		switch v := value.(type) {
-		case string:
-			strValue = v
-		case []byte:
-			strValue = string(v)
-		default:
-			// For complex types, use JSON string representation
-			jsonBytes, err := json.Marshal(v)
-			if err != nil {
-				return nil, c.logAndReturnError("cannot marshal field value", err, logger, requestID, nil)
-			}
-			strValue = string(jsonBytes)
-		}
-		formValues.Set(key, strValue)
+	ctx := context.Background()
+	if c.options != nil && c.options.Timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, c.options.Timeout)
+		defer cancel()
 	}
+	ctx = context.WithValue(ctx, CtxKeyRequestID, requestID)
 
-	encodedForm := formValues.Encode()
-	logger.Debug("URL-encoded request: %v", encodedForm)
+	tags := tagsRetriever(signedRequest)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, strings.NewReader(encodedForm))
 	if err != nil {
-		return nil, c.logAndReturnError("cannot create request", err, logger, requestID, nil)
+		return nil, c.logAndReturnError("cannot create request", err, logger, requestID, tags)
 	}
+	c.setHeaders(req, requestID)
 
-	c.setCommonHeaders(req, requestID)
-	// Set headers for URL-encoded form (must not be overwritten by common headers).
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	tags := make(map[string]string)
-	if signedRequest != nil {
-		tags["action"] = string(signedRequest.Action)
-	}
 	if c.recorder != nil {
 		if err := c.recorder.RecordRequest(ctx, nil, requestID, []byte(encodedForm), tags); err != nil {
 			logger.Error("cannot record request: %v", err)
 		}
 	}
 
+	if c.client == nil {
+		return nil, c.logAndReturnError("http client is nil", fmt.Errorf("http client is nil"), logger, requestID, tags)
+	}
+
+	tStart := time.Now()
 	resp, err := c.client.Do(req)
 	if err != nil {
 		return nil, c.logAndReturnError("cannot send request", err, logger, requestID, tags)
 	}
+	logger.Debug("Request time: %v", time.Since(tStart))
+
 	defer c.safeClose(resp.Body, logger)
 
-	raw, err := io.ReadAll(resp.Body)
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodyBytes+1))
 	if err != nil {
 		return nil, c.logAndReturnError("cannot read response", err, logger, requestID, tags)
 	}
 
+	logger.Debug("Response: %v", string(raw))
 	logger.Debug("Response status: %v", resp.StatusCode)
 
 	if len(raw) == 0 {
-		return nil, c.logAndReturnError("No response bytes", fmt.Errorf("empty response"), logger, requestID, tags)
+		return nil, c.logAndReturnError("no response bytes", fmt.Errorf("empty response"), logger, requestID, tags)
 	}
-
-	logger.Debug("Response: %v", string(raw))
+	if len(raw) > maxResponseBodyBytes {
+		return nil, c.logAndReturnError(
+			"response too large",
+			fmt.Errorf("response exceeds %d bytes", maxResponseBodyBytes),
+			logger,
+			requestID,
+			tags,
+		)
+	}
 
 	if c.recorder != nil {
 		if err := c.recorder.RecordResponse(ctx, nil, requestID, raw, tags); err != nil {
 			logger.Error("cannot record response: %v", err)
 		}
+	}
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, c.logAndReturnError(
+			"unexpected response status",
+			fmt.Errorf("status=%d body=%s", resp.StatusCode, truncateBodyForError(raw)),
+			logger,
+			requestID,
+			tags,
+		)
 	}
 
 	response, err := platon.UnmarshalJSONResponse(raw)
@@ -206,6 +172,31 @@ func (c *Client) sendURLEncodedRequest(apiURL string, unsignedRequest *platon.Re
 	}
 
 	return response, response.GetError()
+}
+
+func encodeRequestMap(requestMap map[string]interface{}) (string, error) {
+	formValues := url.Values{}
+
+	for key, value := range requestMap {
+		if value == nil {
+			continue
+		}
+
+		switch typed := value.(type) {
+		case string:
+			formValues.Set(key, typed)
+		case []byte:
+			formValues.Set(key, string(typed))
+		default:
+			rawValue, err := json.Marshal(value)
+			if err != nil {
+				return "", fmt.Errorf("cannot marshal field %q: %w", key, err)
+			}
+			formValues.Set(key, string(rawValue))
+		}
+	}
+
+	return formValues.Encode(), nil
 }
 
 // logAndReturnError logs an error and optionally records it.
@@ -222,19 +213,13 @@ func (c *Client) logAndReturnError(msg string, err error, logger *log.Logger, re
 	return err
 }
 
-// setCommonHeaders sets headers common to all requests.
-// Content-Type must be set by the concrete request sender (JSON vs x-www-form-urlencoded).
-func (c *Client) setCommonHeaders(req *http.Request, requestID string) {
-	headers := map[string]string{
-		"Accept":       "application/json",
-		"User-Agent":   "GO PLATON/" + consts.Version,
-		"X-Request-ID": requestID,
-		"Api-Version":  consts.ApiVersion,
-	}
-
-	for key, value := range headers {
-		req.Header.Set(key, value)
-	}
+// setHeaders sets common headers for all requests.
+func (c *Client) setHeaders(req *http.Request, requestID string) {
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "GO PLATON/"+consts.Version)
+	req.Header.Set("X-Request-ID", requestID)
+	req.Header.Set("Api-Version", consts.ApiVersion)
 }
 
 // safeClose ensures the body is closed properly and logs any error.
@@ -244,47 +229,67 @@ func (c *Client) safeClose(body io.ReadCloser, logger *log.Logger) {
 	}
 }
 
+func tagsRetriever(request *platon.Request) map[string]string {
+	tags := make(map[string]string)
+	if request == nil {
+		return tags
+	}
+
+	if request.Action != "" {
+		tags["action"] = request.Action
+	}
+	if request.OrderID != nil {
+		tags["order_id"] = *request.OrderID
+	}
+	if request.TransId != nil {
+		tags["trans_id"] = *request.TransId
+	}
+
+	return tags
+}
+
+func truncateBodyForError(raw []byte) string {
+	const max = 512
+	if len(raw) <= max {
+		return string(raw)
+	}
+	return string(raw[:max]) + "...(truncated)"
+}
+
 // NewClient initializes a new HTTP client with options.
 func NewClient(options *Options) *Client {
+	options = normalizeOptions(options)
+
 	dialer := &net.Dialer{
-		Timeout:   30 * time.Second,
+		Timeout:   options.DialTimeout,
 		KeepAlive: options.KeepAlive,
 	}
 
 	tr := &http.Transport{
-		MaxIdleConns:       options.MaxIdleConns,
-		IdleConnTimeout:    options.IdleConnTimeout,
-		DisableCompression: true,
-		DialContext:        dialer.DialContext,
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           dialer.DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          options.MaxIdleConns,
+		MaxIdleConnsPerHost:   options.MaxIdleConnsPerHost,
+		MaxConnsPerHost:       options.MaxConnsPerHost,
+		IdleConnTimeout:       options.IdleConnTimeout,
+		TLSHandshakeTimeout:   options.TLSHandshakeTimeout,
+		ResponseHeaderTimeout: options.ResponseHeaderTimeout,
+		ExpectContinueTimeout: options.ExpectContinueTimeout,
+		DisableCompression:    true,
+	}
+
+	cl := &http.Client{
+		Transport: tr,
+		Timeout:   options.Timeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 
 	return &Client{
-		client:         &http.Client{Transport: tr, Timeout: options.Timeout},
-		options:        options,
-		logger:         log.NewLogger("Platon HTTP: "),
-		applePayLogger: log.NewLogger("Platon ApplePay: "),
+		client:  cl,
+		options: options,
+		logger:  log.NewLogger("Platon HTTP: "),
 	}
-}
-
-func getApiURL(formID platon.ActionCode) string {
-	if formID == platon.ActionCodeSALE {
-		return consts.ApiVerifyURL
-	}
-	return "ERROR_URL"
-}
-
-func generateCurlCommand(req *http.Request, body []byte) string {
-	curl := fmt.Sprintf("curl -X %s '%s'", req.Method, req.URL.String())
-
-	for key, values := range req.Header {
-		for _, value := range values {
-			curl += fmt.Sprintf(" -H '%s: %s'", key, value)
-		}
-	}
-
-	if len(body) > 0 {
-		curl += fmt.Sprintf(" -d '%s'", string(body))
-	}
-
-	return curl
 }

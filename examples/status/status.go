@@ -29,49 +29,43 @@ import (
 
 	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
-	"github.com/stremovskyy/go-platon/internal/utils"
 	"github.com/stremovskyy/go-platon/log"
 )
 
 func main() {
 	cfg := config.MustLoad()
-	client := go_platon.NewDefaultClient()
+	var client go_platon.Platon = go_platon.NewDefaultClient()
+	client.SetLogLevel(log.LevelDebug)
 
 	merchant := &go_platon.Merchant{
-		Name:        cfg.MerchantName,
-		MerchantID:  cfg.MerchantID,
 		MerchantKey: cfg.MerchantKey,
 		SecretKey:   cfg.SecretKey,
 	}
 
-	statusRequest := &go_platon.Request{
+	req := &go_platon.Request{
 		Merchant: merchant,
 		PaymentMethod: &go_platon.PaymentMethod{
 			Card: &go_platon.Card{
-				Pan: utils.Ref(cfg.CardNumber),
+				Pan: ref(cfg.CardNumber),
 			},
 		},
 		PaymentData: &go_platon.PaymentData{
-			PlatonTransID: utils.Ref("632508054"),
+			PlatonTransID: ref("632508054"),
 		},
 		PersonalData: &go_platon.PersonalData{
-			Email: utils.Ref(cfg.PayerEmail),
+			Email: ref(cfg.PayerEmail),
 		},
 	}
 
-	client.SetLogLevel(log.LevelDebug)
-
-	statusResponse, err := client.Status(statusRequest)
+	resp, err := client.Status(req)
 	if err != nil {
-		if statusResponse != nil {
-			statusResponse.PrettyPrint()
-
-			return
-		}
-
-		fmt.Println(err)
+		fmt.Println("status error:", err)
 		return
 	}
 
-	statusResponse.PrettyPrint()
+	resp.PrettyPrint()
+}
+
+func ref(value string) *string {
+	return &value
 }

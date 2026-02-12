@@ -32,64 +32,56 @@ import (
 	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/currency"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
-	"github.com/stremovskyy/go-platon/internal/utils"
 	"github.com/stremovskyy/go-platon/log"
 )
 
 func main() {
 	cfg := config.MustLoad()
-	client := go_platon.NewDefaultClient()
+	var client go_platon.Platon = go_platon.NewDefaultClient()
+	client.SetLogLevel(log.LevelDebug)
 
 	merchant := &go_platon.Merchant{
-		Name:            cfg.MerchantName,
 		MerchantID:      cfg.MerchantID,
 		MerchantKey:     cfg.MerchantKey,
 		SecretKey:       cfg.SecretKey,
 		SuccessRedirect: cfg.SuccessRedirect,
 		FailRedirect:    cfg.FailRedirect,
-		TermsURL:        utils.Ref("https://google.com"),
+		TermsURL:        ref("https://merchant.example/3ds"),
 	}
 
-	uuidString := uuid.New().String()
-	metaData := map[string]string{
-		"key1": "value1",
-	}
+	orderID := uuid.NewString()
 
-	holdRequest := &go_platon.Request{
+	req := &go_platon.Request{
 		Merchant: merchant,
 		PaymentMethod: &go_platon.PaymentMethod{
 			Card: &go_platon.Card{
-				Pan:             utils.Ref(cfg.CardNumber),
-				ExpirationMonth: utils.Ref(cfg.CardMonth),
-				ExpirationYear:  utils.Ref(cfg.CardYear),
-				Cvv2:            utils.Ref(cfg.CardCVV),
+				Pan:             ref(cfg.CardNumber),
+				ExpirationMonth: ref(cfg.CardMonth),
+				ExpirationYear:  ref(cfg.CardYear),
+				Cvv2:            ref(cfg.CardCVV),
 			},
 		},
 		PaymentData: &go_platon.PaymentData{
-			PaymentID:   utils.Ref(uuidString),
+			PaymentID:   ref(orderID),
 			Amount:      100,
 			Currency:    currency.UAH,
-			Description: "Test payment: " + uuidString,
-			Metadata:    metaData,
+			Description: "Simple hold example",
 		},
 		PersonalData: &go_platon.PersonalData{
-			UserID:     utils.Ref(123),
-			FirstName:  utils.Ref("John"),
-			LastName:   utils.Ref("Doe"),
-			MiddleName: utils.Ref("Middle"),
-			TaxID:      utils.Ref("1234567890"),
-			Email:      utils.Ref(cfg.PayerEmail),
-			Phone:      utils.Ref("380631234567"),
+			Email: ref(cfg.PayerEmail),
+			Phone: ref("380631234567"),
 		},
 	}
 
-	client.SetLogLevel(log.LevelDebug)
-
-	holdResponse, err := client.Hold(holdRequest)
+	resp, err := client.Hold(req)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("hold error:", err)
 		return
 	}
 
-	holdResponse.PrettyPrint()
+	resp.PrettyPrint()
+}
+
+func ref(value string) *string {
+	return &value
 }

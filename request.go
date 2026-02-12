@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/stremovskyy/go-platon/consts"
 	"github.com/stremovskyy/go-platon/currency"
 	"github.com/stremovskyy/go-platon/platon"
 )
@@ -40,6 +41,34 @@ type Request struct {
 	PersonalData  *PersonalData
 	PaymentData   *PaymentData
 	PaymentMethod *PaymentMethod
+}
+
+// BuildClientServerVerificationForm builds signed browser form fields for
+// Client-Server card verification (`/payment/auth`).
+func BuildClientServerVerificationForm(request *Request) (*platon.ClientServerVerificationForm, error) {
+	if request == nil {
+		return nil, platon.ErrRequestIsNil
+	}
+	if request.Merchant == nil {
+		return nil, fmt.Errorf("verification: merchant is required for client-server flow")
+	}
+
+	redirectURL := strings.TrimSpace(request.GetSuccessRedirect())
+	if redirectURL == "" {
+		redirectURL = strings.TrimSpace(request.GetFailRedirect())
+	}
+
+	return platon.BuildClientServerVerificationForm(
+		platon.ClientServerVerificationParams{
+			ClientKey:   request.GetMerchantKey(),
+			Secret:      request.Merchant.SecretKey,
+			RedirectURL: redirectURL,
+			Description: request.GetDescription(),
+			Currency:    request.GetCurrency().String(),
+			OrderID:     request.GetPaymentID(),
+		},
+		consts.ApiPaymentAuthURL,
+	)
 }
 
 func (r *Request) GetAuth() *platon.Auth {

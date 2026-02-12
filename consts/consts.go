@@ -31,6 +31,8 @@ const (
 	baseUrl = "https://secure.platononline.com"
 
 	ApiPaymentURL = baseUrl + "/payment"
+	// ApiPaymentAuthURL is the Client-Server browser endpoint used by card verification.
+	ApiPaymentAuthURL = baseUrl + "/payment/auth"
 
 	// ApiConfigurationURL is the IA configuration endpoint (e.g. GET_SUBMERCHANT).
 	ApiConfigurationURL = baseUrl + "/configuration/"

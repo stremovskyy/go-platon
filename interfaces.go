@@ -25,19 +25,26 @@
 package go_platon
 
 import (
+	"net/url"
+
 	"github.com/stremovskyy/go-platon/log"
 	"github.com/stremovskyy/go-platon/platon"
 )
 
+// Platon is the public client interface.
+//
+// Methods accept optional RunOption values (for example DryRun()).
+// Verification executes client-server verification and returns ready-to-use purchase URL.
 type Platon interface {
-	Verification(request *Request) (*platon.Result, error)
-	Status(request *Request) (*platon.Response, error)
-	Payment(invoiceRequest *Request) (*platon.Response, error)
-	Hold(invoiceRequest *Request) (*platon.Response, error)
-	SubmerchantAvailableForSplit(request *Request) (bool, error)
-	Capture(invoiceRequest *Request) (*platon.Response, error)
-	Refund(invoiceRequest *Request) (*platon.Response, error)
-	Credit(invoiceRequest *Request) (*platon.Response, error)
+	Verification(request *Request, opts ...RunOption) (*url.URL, error)
+	VerificationLink(request *Request, opts ...RunOption) (*url.URL, error)
+	Status(request *Request, opts ...RunOption) (*platon.Response, error)
+	Payment(request *Request, opts ...RunOption) (*platon.Response, error)
+	Hold(request *Request, opts ...RunOption) (*platon.Response, error)
+	SubmerchantAvailableForSplit(request *Request, opts ...RunOption) (bool, error)
+	Capture(request *Request, opts ...RunOption) (*platon.Response, error)
+	Refund(request *Request, opts ...RunOption) (*platon.Response, error)
+	Credit(request *Request, opts ...RunOption) (*platon.Response, error)
+	ParseWebhookXML(data []byte) (*platon.Payment, error)
 	SetLogLevel(levelDebug log.Level)
-	SignVerification
 }

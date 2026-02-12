@@ -27,60 +27,30 @@ package main
 import (
 	"fmt"
 
-	"github.com/google/uuid"
-
 	go_platon "github.com/stremovskyy/go-platon"
-	"github.com/stremovskyy/go-platon/currency"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
-	"github.com/stremovskyy/go-platon/internal/utils"
 	"github.com/stremovskyy/go-platon/log"
 )
 
 func main() {
 	cfg := config.MustLoad()
-	client := go_platon.NewDefaultClient()
+	var client go_platon.Platon = go_platon.NewDefaultClient()
+	client.SetLogLevel(log.LevelDebug)
 
 	merchant := &go_platon.Merchant{
-		Name:            cfg.MerchantNameWithdraw,
-		MerchantID:      cfg.MerchantIDWithdraw,
 		MerchantKey:     cfg.MerchantKey,
 		SecretKey:       cfg.SecretKey,
 		SuccessRedirect: cfg.SuccessRedirect,
 		FailRedirect:    cfg.FailRedirect,
 	}
 
-	uuidString := uuid.New().String()
-
-	creditRequest := &go_platon.Request{
+	req := &go_platon.Request{
 		Merchant: merchant,
-		PaymentMethod: &go_platon.PaymentMethod{
-			Card: &go_platon.Card{
-				Name:  "Test Card",
-				Token: utils.Ref(cfg.CardToken),
-				// Pan: utils.Ref(cfg.CardPan),
-			},
-		},
-		PaymentData: &go_platon.PaymentData{
-			PaymentID:   utils.Ref(uuidString),
-			Amount:      100,
-			Currency:    currency.UAH,
-			Description: "Test payment: " + uuidString,
-		},
-		PersonalData: &go_platon.PersonalData{
-			UserID:    utils.Ref(123),
-			FirstName: utils.Ref("John"),
-			LastName:  utils.Ref("Doe"),
-			TaxID:     utils.Ref("1234567890"),
-		},
 	}
 
-	client.SetLogLevel(log.LevelDebug)
-
-	creditResponse, err := client.Credit(creditRequest)
+	_, err := client.Credit(req)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("credit is not implemented yet:", err)
 		return
 	}
-
-	fmt.Printf("\nWithdraw: %s result=%v error=%v\n", uuidString, creditResponse.Result, creditResponse.ErrorMessage)
 }

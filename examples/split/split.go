@@ -26,44 +26,40 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/google/uuid"
 
 	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/currency"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
-	"github.com/stremovskyy/go-platon/internal/utils"
 	"github.com/stremovskyy/go-platon/log"
 )
 
 func main() {
 	cfg := config.MustLoad()
-	client := go_platon.NewDefaultClient()
+	var client go_platon.Platon = go_platon.NewDefaultClient()
+	client.SetLogLevel(log.LevelDebug)
 
 	merchant := &go_platon.Merchant{
-		Name:            cfg.MerchantName,
 		MerchantID:      cfg.MerchantID,
 		MerchantKey:     cfg.MerchantKey,
 		SecretKey:       cfg.SecretKey,
 		SuccessRedirect: cfg.SuccessRedirect,
 		FailRedirect:    cfg.FailRedirect,
-		TermsURL:        utils.Ref("https://google.com"),
+		TermsURL:        ref("https://merchant.example/3ds"),
 	}
 
-	client.SetLogLevel(log.LevelDebug)
-
 	submerchantID := "12345678"
-
-	enabled, err := client.SubmerchantAvailableForSplit(&go_platon.Request{
+	checkReq := &go_platon.Request{
 		Merchant: merchant,
 		PaymentData: &go_platon.PaymentData{
 			SubmerchantID: &submerchantID,
 		},
-	})
+	}
+	enabled, err := client.SubmerchantAvailableForSplit(checkReq)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		fmt.Println("split availability error:", err)
+		return
 	}
 
 	if !enabled {
@@ -71,38 +67,42 @@ func main() {
 		return
 	}
 
-	orderID := uuid.New().String()
-	paymentRequest := &go_platon.Request{
+	orderID := uuid.NewString()
+	req := &go_platon.Request{
 		Merchant: merchant,
 		PaymentMethod: &go_platon.PaymentMethod{
 			Card: &go_platon.Card{
-				Pan:             utils.Ref(cfg.CardNumber),
-				ExpirationMonth: utils.Ref(cfg.CardMonth),
-				ExpirationYear:  utils.Ref(cfg.CardYear),
-				Cvv2:            utils.Ref(cfg.CardCVV),
+				Pan:             ref(cfg.CardNumber),
+				ExpirationMonth: ref(cfg.CardMonth),
+				ExpirationYear:  ref(cfg.CardYear),
+				Cvv2:            ref(cfg.CardCVV),
 			},
 		},
 		PaymentData: &go_platon.PaymentData{
 			PaymentID:   &orderID,
 			Amount:      300,
 			Currency:    currency.UAH,
-			Description: "Split payment: " + orderID,
+			Description: "Simple split payment example",
 			SplitRules: []go_platon.SplitRule{
 				{SubmerchantIdentification: "12345678", Amount: 100},
 				{SubmerchantIdentification: "87654321", Amount: 200},
 			},
 		},
 		PersonalData: &go_platon.PersonalData{
-			Email: utils.Ref(cfg.PayerEmail),
-			Phone: utils.Ref("380631234567"),
+			Email: ref(cfg.PayerEmail),
+			Phone: ref("380631234567"),
 		},
 	}
 
-	paymentResponse, err := client.Payment(paymentRequest)
+	resp, err := client.Payment(req)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		fmt.Println("split payment error:", err)
+		return
 	}
 
-	paymentResponse.PrettyPrint()
+	resp.PrettyPrint()
+}
+
+func ref(value string) *string {
+	return &value
 }

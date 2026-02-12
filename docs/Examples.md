@@ -4,9 +4,10 @@ Runnable examples are available under `examples/`.
 Examples load credentials from environment variables using `examples/internal/config`.
 Copy `examples/.env.example` to `examples/.env` and set real values before running examples.
 
-## Card Verification
+## Card Verification (Client-Server Form)
 
-See `examples/verification/verification.go`.
+See `examples/verification/verification.go` (calls `client.Verification(req)` and prints URL in format
+`https://secure.platononline.com/payment/purchase?token=...`).
 
 ## Card Payment / Hold
 

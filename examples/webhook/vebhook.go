@@ -28,25 +28,20 @@ import (
 	"fmt"
 	"time"
 
+	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
-	"github.com/stremovskyy/go-platon/platon"
 )
 
 func main() {
 	cfg := config.MustLoad()
+	var client go_platon.Platon = go_platon.NewDefaultClient()
 
-	xmlData := []byte(cfg.ValidationSuccess)
-
-	payment, err := platon.ParsePaymentXML(xmlData)
+	payment, err := client.ParseWebhookXML([]byte(cfg.ValidationSuccess))
 	if err != nil {
-		fmt.Println("Error parsing XML:", err)
+		fmt.Println("webhook parse error:", err)
 		return
 	}
 
-	// For demonstration, print out the payment ID and status
-	fmt.Printf("Payment: %s\n", payment.String())
-
-	// To demonstrate timestamp conversion to a readable format
-	timestamp := time.Unix(payment.Timestamp, 0)
-	fmt.Println("Timestamp:", timestamp)
+	fmt.Println("payment:", payment.String())
+	fmt.Println("timestamp:", time.Unix(payment.Timestamp, 0))
 }

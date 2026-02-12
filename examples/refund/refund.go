@@ -26,58 +26,50 @@ package main
 
 import (
 	"fmt"
-	"os"
 
 	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
-	"github.com/stremovskyy/go-platon/internal/utils"
 	"github.com/stremovskyy/go-platon/log"
 )
 
 func main() {
 	cfg := config.MustLoad()
-	client := go_platon.NewDefaultClient()
+	var client go_platon.Platon = go_platon.NewDefaultClient()
+	client.SetLogLevel(log.LevelDebug)
 
 	merchant := &go_platon.Merchant{
-		Name:        cfg.MerchantName,
-		MerchantID:  cfg.MerchantID,
 		MerchantKey: cfg.MerchantKey,
 		SecretKey:   cfg.SecretKey,
 	}
 
-	refundRequest := &go_platon.Request{
+	req := &go_platon.Request{
 		Merchant: merchant,
 		PaymentMethod: &go_platon.PaymentMethod{
 			Card: &go_platon.Card{
-				// CREDITVOID signature uses first 6 + last 4 of the PAN.
-				Pan: utils.Ref(cfg.CardNumber),
+				Pan: ref(cfg.CardNumber),
 			},
 		},
 		PaymentData: &go_platon.PaymentData{
-			PlatonTransID: utils.Ref("632508054"),
+			PlatonTransID: ref("632508054"),
 			Amount:        100,
 			Metadata: map[string]string{
-				// Optional: send `immediately=Y` (fast refund).
 				"immediately": "Y",
 			},
 		},
 		PersonalData: &go_platon.PersonalData{
-			Email: utils.Ref(cfg.PayerEmail),
+			Email: ref(cfg.PayerEmail),
 		},
 	}
 
-	client.SetLogLevel(log.LevelDebug)
-
-	refundResponse, err := client.Refund(refundRequest)
+	resp, err := client.Refund(req)
 	if err != nil {
-		fmt.Println(err)
-
-		if refundResponse != nil {
-			refundResponse.PrettyPrint()
-		}
-
-		os.Exit(1)
+		fmt.Println("refund error:", err)
+		return
 	}
 
-	refundResponse.PrettyPrint()
+	resp.PrettyPrint()
+}
+
+func ref(value string) *string {
+	return &value
 }

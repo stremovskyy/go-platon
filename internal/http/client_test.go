@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -69,3 +70,84 @@ func TestApi_UsesFormURLEncodedContentType(t *testing.T) {
 	}
 }
 
+func TestApi_ReturnsErrorOnNon2xxStatus(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadGateway)
+		_, _ = w.Write([]byte(`gateway down`))
+	}))
+	defer srv.Close()
+
+	auth := &platon.Auth{Key: "k", Secret: "secret123"}
+	orderID := "order-123"
+	desc := "one-click"
+	ip := "127.0.0.1"
+	term := "https://example.com/3ds"
+	email := "payer@example.com"
+	phone := "380631234567"
+	token := "TOKEN123"
+
+	req := platon.NewRequest(platon.ActionCodeSALE).
+		WithAuth(auth).
+		WithClientKey("clientKey").
+		WithCardToken(&token).
+		WithOrderID(&orderID).
+		WithOrderAmount("1.00").
+		ForCurrency(currency.UAH).
+		WithDescription(desc).
+		WithPayerIP(&ip).
+		WithTermsURL(&term).
+		WithPayerEmail(&email).
+		WithPayerPhone(&phone).
+		SignForAction(platon.HashTypeCardTokenPayment)
+
+	c := NewClient(DefaultOptions())
+	_, err := c.Api(req, srv.URL)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "status=502") {
+		t.Fatalf("expected status code in error, got %q", err.Error())
+	}
+}
+
+func TestApi_ReturnsErrorWhenResponseIsTooLarge(t *testing.T) {
+	tooLarge := bytes.Repeat([]byte("x"), maxResponseBodyBytes+16)
+
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(tooLarge)
+	}))
+	defer srv.Close()
+
+	auth := &platon.Auth{Key: "k", Secret: "secret123"}
+	orderID := "order-123"
+	desc := "one-click"
+	ip := "127.0.0.1"
+	term := "https://example.com/3ds"
+	email := "payer@example.com"
+	phone := "380631234567"
+	token := "TOKEN123"
+
+	req := platon.NewRequest(platon.ActionCodeSALE).
+		WithAuth(auth).
+		WithClientKey("clientKey").
+		WithCardToken(&token).
+		WithOrderID(&orderID).
+		WithOrderAmount("1.00").
+		ForCurrency(currency.UAH).
+		WithDescription(desc).
+		WithPayerIP(&ip).
+		WithTermsURL(&term).
+		WithPayerEmail(&email).
+		WithPayerPhone(&phone).
+		SignForAction(platon.HashTypeCardTokenPayment)
+
+	c := NewClient(DefaultOptions())
+	_, err := c.Api(req, srv.URL)
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "response exceeds") {
+		t.Fatalf("unexpected error: %q", err.Error())
+	}
+}

@@ -83,15 +83,24 @@ Runnable example: `examples/card_token/card_token.go`.
 
 Then call `client.Payment(req)` or `client.Hold(req)`.
 
-## Card Verification (VERIFY_ZERO)
+## Card Verification (Client-Server)
 
-`client.Verification(req)` sends a verification request with:
+Card verification must use Client-Server flow (`/payment/auth`) and be submitted from payer browser.
 
-- `channel_id=VERIFY_ZERO`
-- `order_amount=0.40`
-- `req_token=Y` and `recurring_init=Y`
+The simplest way is to call:
 
-It returns `*platon.Result`.
+```go
+verificationURL, err := client.Verification(req)
+if err != nil {
+	panic(err)
+}
+fmt.Println(verificationURL.String())
+```
+
+`client.VerificationLink(req)` is an alias with the same behavior.
+
+If you need full control over HTML/form rendering, use
+`go_platon.BuildClientServerVerificationForm(req)` and submit returned fields manually.
 
 ## GET_TRANS_STATUS
 

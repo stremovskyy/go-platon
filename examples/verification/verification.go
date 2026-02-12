@@ -32,13 +32,13 @@ import (
 	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/currency"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
-	"github.com/stremovskyy/go-platon/internal/utils"
 	"github.com/stremovskyy/go-platon/log"
 )
 
 func main() {
 	cfg := config.MustLoad()
-	client := go_platon.NewDefaultClient()
+	var client go_platon.Platon = go_platon.NewDefaultClient()
+	client.SetLogLevel(log.LevelDebug)
 
 	merchant := &go_platon.Merchant{
 		Name:            cfg.MerchantName,
@@ -47,43 +47,28 @@ func main() {
 		SecretKey:       cfg.SecretKey,
 		SuccessRedirect: cfg.SuccessRedirect,
 		FailRedirect:    cfg.FailRedirect,
-		TermsURL:        utils.Ref("https://google.com"),
 	}
 
-	uuidString := uuid.New().String()
+	orderID := uuid.NewString()
 
-	VerificationRequest := &go_platon.Request{
+	req := &go_platon.Request{
 		Merchant: merchant,
-		PaymentMethod: &go_platon.PaymentMethod{
-			Card: &go_platon.Card{
-				Pan:             utils.Ref(cfg.CardNumber),
-				ExpirationMonth: utils.Ref(cfg.CardMonth),
-				ExpirationYear:  utils.Ref(cfg.CardYear),
-				Cvv2:            utils.Ref(cfg.CardCVV),
-			},
-		},
 		PaymentData: &go_platon.PaymentData{
-			PaymentID:   utils.Ref(uuidString),
-			Description: "Verification payment: " + uuidString,
+			PaymentID:   ref(orderID),
+			Description: "Simple verification example",
 			Currency:    currency.UAH,
 		},
-		PersonalData: &go_platon.PersonalData{
-			UserID:    utils.Ref(123),
-			FirstName: utils.Ref("John"),
-			LastName:  utils.Ref("Doe"),
-			TaxID:     utils.Ref("1234567890"),
-			Email:     utils.Ref(cfg.PayerEmail),
-			Phone:     utils.Ref("380631234567"),
-		},
 	}
 
-	client.SetLogLevel(log.LevelAll)
-
-	result, err := client.Verification(VerificationRequest)
+	verificationURL, err := client.Verification(req)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("verification error:", err)
 		return
 	}
 
-	fmt.Println(result.String())
+	fmt.Println(verificationURL.String())
+}
+
+func ref(value string) *string {
+	return &value
 }
