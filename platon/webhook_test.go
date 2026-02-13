@@ -22,3 +22,31 @@ func TestPayment_GetTransactionByID_ReturnsPointerToUnderlyingElement(t *testing
 		t.Fatalf("GetTransactionByID() returned pointer to copy, expected pointer to slice element")
 	}
 }
+
+func TestPayment_NilReceiver_IsSafe(t *testing.T) {
+	var payment *Payment
+
+	if payment.IsValid() {
+		t.Fatalf("nil payment must be invalid")
+	}
+	if tx := payment.GetTransactionByID(1); tx != nil {
+		t.Fatalf("expected nil transaction for nil payment receiver")
+	}
+	if got := payment.String(); got != "Payment[<nil>]" {
+		t.Fatalf("unexpected String() for nil payment: %q", got)
+	}
+}
+
+func TestTransactions_NilReceiver_IsSafe(t *testing.T) {
+	var txs *Transactions
+
+	if got := txs.Len(); got != 0 {
+		t.Fatalf("Len() mismatch: want 0, got %d", got)
+	}
+	if tx := txs.First(); tx != nil {
+		t.Fatalf("First() expected nil transaction for nil receiver")
+	}
+	if tx := txs.Last(); tx != nil {
+		t.Fatalf("Last() expected nil transaction for nil receiver")
+	}
+}

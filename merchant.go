@@ -26,6 +26,7 @@ package go_platon
 
 import (
 	"strconv"
+	"strings"
 )
 
 type Merchant struct {
@@ -51,7 +52,16 @@ type Merchant struct {
 }
 
 func (m *Merchant) GetMerchantID() *int64 {
-	id, err := strconv.ParseInt(m.MerchantID, 10, 64)
+	if m == nil {
+		return nil
+	}
+
+	merchantID := strings.TrimSpace(m.MerchantID)
+	if merchantID == "" {
+		return nil
+	}
+
+	id, err := strconv.ParseInt(merchantID, 10, 64)
 
 	if err != nil {
 		return nil
@@ -61,6 +71,10 @@ func (m *Merchant) GetMerchantID() *int64 {
 }
 
 func (m *Merchant) GetMobileLogin() *string {
+	if m == nil {
+		return nil
+	}
+
 	if m.Login == "" {
 		return nil
 	}

@@ -130,3 +130,16 @@ func TestVerificationLink_DryRun(t *testing.T) {
 		t.Fatalf("endpoint mismatch: want %q, got %q", consts.ApiPaymentAuthURL, gotEndpoint)
 	}
 }
+
+func TestDryRun_DefaultHandler_NilPlatonRequestPayload(t *testing.T) {
+	opts := collectRunOptions([]RunOption{DryRun()})
+	var req *platon.Request
+
+	defer func() {
+		if r := recover(); r != nil {
+			t.Fatalf("default dry-run handler panicked on nil *platon.Request payload: %v", r)
+		}
+	}()
+
+	opts.handleDryRun(consts.ApiPostUnqURL, req)
+}

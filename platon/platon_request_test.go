@@ -416,3 +416,90 @@ func TestSignAndPrepare_OrderAmountValidation(t *testing.T) {
 		t.Fatalf("expected validation error, got nil")
 	}
 }
+
+func TestRequest_NilReceiver_SignAndPrepare(t *testing.T) {
+	var req *Request
+
+	signed, err := req.SignAndPrepare()
+	if err == nil {
+		t.Fatalf("expected error for nil request receiver, got nil")
+	}
+	if signed != nil {
+		t.Fatalf("expected nil signed request, got %#v", signed)
+	}
+}
+
+func TestRequest_NilReceiver_SignForAction(t *testing.T) {
+	var req *Request
+	if got := req.SignForAction(HashTypeCardPayment); got != nil {
+		t.Fatalf("expected nil receiver to stay nil, got %#v", got)
+	}
+}
+
+func TestRequest_NilReceiver_ToMap(t *testing.T) {
+	var req *Request
+
+	result := req.ToMap()
+	if result == nil {
+		t.Fatalf("expected non-nil map for nil receiver")
+	}
+	if len(result) != 0 {
+		t.Fatalf("expected empty map, got %v", result)
+	}
+}
+
+func TestRequest_NilReceiver_BuilderChainIsSafe(t *testing.T) {
+	var req *Request
+
+	orderID := "order-1"
+	transID := "trans-1"
+	email := "payer@example.com"
+	value := "value"
+
+	got := req.
+		WithAuth(&Auth{Key: "k", Secret: "s"}).
+		WithClientKey("k").
+		WithReqToken(true).
+		WithRecToken().
+		WithRecurringInitFlag(true).
+		WithRecurringInit().
+		WithAsync(true).
+		UseAsync().
+		WithChannelNoAmountVerification().
+		WithPayerIP(nil).
+		WithTermsURL(&value).
+		WithCardNumber(&value).
+		WithCardToken(&value).
+		WithCardExpMonth(&value).
+		WithCardExpYear(&value).
+		WithCardCvv2(&value).
+		WithPayerEmail(&email).
+		WithPayerPhone(&value).
+		WithPayerFirstName(&value).
+		WithPayerLastName(&value).
+		WithApplePayData(&value).
+		WithGooglePayToken(&value).
+		WithPaymentToken(&value).
+		WithHoldAuth().
+		WithVerifyAmount(0).
+		WithOrderAmountMinorUnits(100).
+		WithOrderAmount("1.00").
+		ForCurrency(currency.UAH).
+		WithSubmerchantID(&value).
+		WithDescription("desc").
+		WithOrderID(&orderID).
+		WithRecurringFirstTransID(&transID).
+		WithTransID(&transID).
+		WithAmountMinorUnits(100).
+		WithAmount("1.00").
+		WithSplitRules(SplitRules{"submerchant": "1.00"}).
+		WithImmediately(true).
+		WithHashEmail(&email).
+		WithCardHashPart(&value).
+		WithExt3(&value).
+		SignForAction(HashTypeCardPayment)
+
+	if got != nil {
+		t.Fatalf("expected nil request after nil receiver builder chain, got %#v", got)
+	}
+}

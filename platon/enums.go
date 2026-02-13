@@ -27,6 +27,10 @@ package platon
 type Lang string
 
 func (l *Lang) String() string {
+	if l == nil {
+		return ""
+	}
+
 	return string(*l)
 }
 

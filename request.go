@@ -72,6 +72,13 @@ func BuildClientServerVerificationForm(request *Request) (*platon.ClientServerVe
 }
 
 func (r *Request) GetAuth() *platon.Auth {
+	if r == nil {
+		return &platon.Auth{
+			Key:    "EMPTY_KEY",
+			Secret: "EMPTY_SECRET",
+		}
+	}
+
 	if r.Merchant == nil {
 		return &platon.Auth{
 			Key:    "EMPTY_KEY",
@@ -85,6 +92,10 @@ func (r *Request) GetAuth() *platon.Auth {
 	}
 }
 func (r *Request) GetSuccessRedirect() string {
+	if r == nil {
+		return ""
+	}
+
 	if r.Merchant == nil {
 		return ""
 	}
@@ -92,6 +103,10 @@ func (r *Request) GetSuccessRedirect() string {
 }
 
 func (r *Request) GetFailRedirect() string {
+	if r == nil {
+		return ""
+	}
+
 	if r.Merchant == nil {
 		return ""
 	}
@@ -99,6 +114,10 @@ func (r *Request) GetFailRedirect() string {
 }
 
 func (r *Request) GetPlatonPaymentID() int64 {
+	if r == nil {
+		return 0
+	}
+
 	if r.PaymentData == nil || r.PaymentData.PlatonPaymentID == nil {
 		return 0
 	}
@@ -109,6 +128,10 @@ func (r *Request) GetPlatonPaymentID() int64 {
 // GetPlatonTransID returns Platon `trans_id` as string.
 // It prefers PaymentData.PlatonTransID and falls back to formatting PaymentData.PlatonPaymentID.
 func (r *Request) GetPlatonTransID() *string {
+	if r == nil {
+		return nil
+	}
+
 	if r.PaymentData == nil {
 		return nil
 	}
@@ -123,6 +146,10 @@ func (r *Request) GetPlatonTransID() *string {
 }
 
 func (r *Request) GetCardToken() *string {
+	if r == nil {
+		return nil
+	}
+
 	if r.PaymentMethod == nil || r.PaymentMethod.Card == nil {
 		return nil
 	}
@@ -131,6 +158,10 @@ func (r *Request) GetCardToken() *string {
 }
 
 func (r *Request) GetCardPan() *string {
+	if r == nil {
+		return nil
+	}
+
 	if r.PaymentMethod == nil || r.PaymentMethod.Card == nil {
 		return nil
 	}
@@ -139,6 +170,10 @@ func (r *Request) GetCardPan() *string {
 }
 
 func (r *Request) GetPaymentID() *string {
+	if r == nil {
+		return nil
+	}
+
 	if r.PaymentData == nil {
 		return nil
 	}
@@ -147,6 +182,10 @@ func (r *Request) GetPaymentID() *string {
 }
 
 func (r *Request) GetPayerEmail() *string {
+	if r == nil {
+		return nil
+	}
+
 	if r.PersonalData == nil {
 		return nil
 	}
@@ -155,6 +194,10 @@ func (r *Request) GetPayerEmail() *string {
 }
 
 func (r *Request) GetPayerPhone() *string {
+	if r == nil {
+		return nil
+	}
+
 	if r.PersonalData == nil {
 		return nil
 	}
@@ -163,6 +206,10 @@ func (r *Request) GetPayerPhone() *string {
 }
 
 func (r *Request) SetRedirects(successURL string, failURL string) {
+	if r == nil {
+		return
+	}
+
 	if r.Merchant == nil {
 		r.Merchant = &Merchant{}
 	}
@@ -172,6 +219,10 @@ func (r *Request) SetRedirects(successURL string, failURL string) {
 }
 
 func (r *Request) GetAmount() float32 {
+	if r == nil {
+		return 0
+	}
+
 	if r.PaymentData == nil {
 		return 0
 	}
@@ -180,6 +231,10 @@ func (r *Request) GetAmount() float32 {
 }
 
 func (r *Request) GetDescription() string {
+	if r == nil {
+		return ""
+	}
+
 	if r.PaymentData == nil {
 		return ""
 	}
@@ -188,6 +243,10 @@ func (r *Request) GetDescription() string {
 }
 
 func (r *Request) GetCurrency() currency.Code {
+	if r == nil {
+		return ""
+	}
+
 	if r.PaymentData == nil {
 		return ""
 	}
@@ -197,6 +256,10 @@ func (r *Request) GetCurrency() currency.Code {
 }
 
 func (r *Request) IsMobile() bool {
+	if r == nil {
+		return false
+	}
+
 	if r.PaymentData == nil {
 		return false
 	}
@@ -217,6 +280,10 @@ func (r *Request) IsMobile() bool {
 }
 
 func (r *Request) GetAppleContainer() (*string, error) {
+	if r == nil {
+		return nil, fmt.Errorf("request is nil")
+	}
+
 	if r.PaymentMethod == nil || r.PaymentMethod.AppleContainer == nil {
 		return nil, fmt.Errorf("Apple Container is not set")
 	}
@@ -244,10 +311,18 @@ func (r *Request) GetAppleContainer() (*string, error) {
 }
 
 func (r *Request) IsApplePay() bool {
+	if r == nil {
+		return false
+	}
+
 	return r.PaymentMethod != nil && r.PaymentMethod.AppleContainer != nil && *r.PaymentMethod.AppleContainer != ""
 }
 
 func (r *Request) GetGoogleToken() (*string, error) {
+	if r == nil {
+		return nil, fmt.Errorf("request is nil")
+	}
+
 	if r.PaymentMethod == nil || r.PaymentMethod.GoogleToken == nil {
 		return nil, fmt.Errorf("Google Token is not set")
 	}
@@ -282,6 +357,10 @@ func (r *Request) GetGoogleToken() (*string, error) {
 }
 
 func (r *Request) GetTrackingData() *int64 {
+	if r == nil {
+		return nil
+	}
+
 	if r.PaymentData == nil {
 		return nil
 	}
@@ -290,6 +369,10 @@ func (r *Request) GetTrackingData() *int64 {
 }
 
 func (r *Request) GetSplitRules() (platon.SplitRules, error) {
+	if r == nil {
+		return nil, nil
+	}
+
 	if r.PaymentData == nil || len(r.PaymentData.SplitRules) == 0 {
 		return nil, nil
 	}
@@ -329,6 +412,10 @@ func (r *Request) GetSplitRules() (platon.SplitRules, error) {
 }
 
 func (r *Request) GetSubmerchantID() *string {
+	if r == nil {
+		return nil
+	}
+
 	if r.PaymentData == nil || r.PaymentData.SubmerchantID == nil {
 		return nil
 	}
@@ -342,6 +429,10 @@ func (r *Request) GetSubmerchantID() *string {
 }
 
 func (r *Request) GetReceiverTIN() *string {
+	if r == nil {
+		return nil
+	}
+
 	if r.PersonalData == nil {
 		return nil
 	}
@@ -350,6 +441,10 @@ func (r *Request) GetReceiverTIN() *string {
 }
 
 func (r *Request) GetRelatedIDs() []int64 {
+	if r == nil {
+		return nil
+	}
+
 	if r.PaymentData == nil || r.PaymentData.RelatedIds == nil {
 		return nil
 	}
@@ -358,6 +453,10 @@ func (r *Request) GetRelatedIDs() []int64 {
 }
 
 func (r *Request) GetMetadata() map[string]string {
+	if r == nil {
+		return map[string]string{}
+	}
+
 	if r.PaymentData == nil {
 		return map[string]string{}
 	}
@@ -366,6 +465,10 @@ func (r *Request) GetMetadata() map[string]string {
 }
 
 func (r *Request) GetMerchantKey() string {
+	if r == nil {
+		return ""
+	}
+
 	if r.Merchant == nil {
 		return ""
 	}
@@ -374,6 +477,10 @@ func (r *Request) GetMerchantKey() string {
 }
 
 func (r *Request) GetClientIP() *string {
+	if r == nil {
+		return nil
+	}
+
 	if r.Merchant == nil {
 		return nil
 	}
@@ -382,6 +489,10 @@ func (r *Request) GetClientIP() *string {
 }
 
 func (r *Request) GetTermsURL() *string {
+	if r == nil {
+		return nil
+	}
+
 	if r.Merchant == nil {
 		return nil
 	}
@@ -390,6 +501,10 @@ func (r *Request) GetTermsURL() *string {
 }
 
 func (r *Request) GetCardNumber() *string {
+	if r == nil {
+		return nil
+	}
+
 	if r.PaymentMethod == nil || r.PaymentMethod.Card == nil {
 		return nil
 	}
@@ -398,6 +513,10 @@ func (r *Request) GetCardNumber() *string {
 }
 
 func (r *Request) GetCardExpMonth() *string {
+	if r == nil {
+		return nil
+	}
+
 	if r.PaymentMethod == nil || r.PaymentMethod.Card == nil || r.PaymentMethod.Card.ExpirationMonth == nil {
 		return nil
 	}
@@ -406,6 +525,10 @@ func (r *Request) GetCardExpMonth() *string {
 }
 
 func (r *Request) GetCardExpYear() *string {
+	if r == nil {
+		return nil
+	}
+
 	if r.PaymentMethod == nil || r.PaymentMethod.Card == nil || r.PaymentMethod.Card.ExpirationYear == nil {
 		return nil
 	}
@@ -414,6 +537,10 @@ func (r *Request) GetCardExpYear() *string {
 }
 
 func (r *Request) GetCardCvv2() *string {
+	if r == nil {
+		return nil
+	}
+
 	if r.PaymentMethod == nil || r.PaymentMethod.Card == nil || r.PaymentMethod.Card.Cvv2 == nil {
 		return nil
 	}

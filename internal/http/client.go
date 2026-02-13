@@ -125,6 +125,24 @@ func (c *Client) sendURLEncodedRequest(apiURL string, unsignedRequest *platon.Re
 	if err != nil {
 		return nil, c.logAndReturnError("cannot send request", err, logger, requestID, tags)
 	}
+	if resp == nil {
+		return nil, c.logAndReturnError(
+			"invalid response",
+			fmt.Errorf("http response is nil"),
+			logger,
+			requestID,
+			tags,
+		)
+	}
+	if resp.Body == nil {
+		return nil, c.logAndReturnError(
+			"invalid response",
+			fmt.Errorf("http response body is nil"),
+			logger,
+			requestID,
+			tags,
+		)
+	}
 	logger.Debug("Request time: %v", time.Since(tStart))
 
 	defer c.safeClose(resp.Body, logger)

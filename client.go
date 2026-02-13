@@ -252,9 +252,7 @@ func (c *client) buildIAPaymentRequest(request *Request, hold bool) (*platon.Req
 			WithPayerIP(request.GetClientIP()).
 			WithTermsURL(request.GetTermsURL()).
 			WithPayerEmail(request.GetPayerEmail()).
-			WithPayerPhone(request.GetPayerPhone()).
-			WithPayerFirstName(nil).
-			WithPayerLastName(nil)
+			WithPayerPhone(request.GetPayerPhone())
 
 		if request.PersonalData != nil {
 			base.WithPayerFirstName(request.PersonalData.FirstName).

@@ -99,6 +99,10 @@ func defaultDryRunHandler(endpoint string, payload any) {
 
 	switch req := payload.(type) {
 	case *platon.Request:
+		if req == nil {
+			dryRunLogger.Info("Dry run payload: <nil>")
+			return
+		}
 		dryRunLogger.Info("Dry run payload:\n%s", marshalIndent(req.ToMap()))
 	default:
 		dryRunLogger.Info("Dry run payload:\n%s", marshalIndent(req))

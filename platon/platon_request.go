@@ -120,6 +120,10 @@ type Request struct {
 
 // NewPaymentRequest creates a new validated payment request
 func (r *Request) SignAndPrepare() (*Request, error) {
+	if r == nil {
+		return nil, fmt.Errorf("request is nil")
+	}
+
 	var sign string
 	var err error
 
@@ -178,6 +182,10 @@ func (r *Request) SignAndPrepare() (*Request, error) {
 }
 
 func (r *Request) SignForAction(t HashType) *Request {
+	if r == nil {
+		return nil
+	}
+
 	r.HashType = t
 
 	return r
@@ -407,6 +415,10 @@ func (r *Request) generateGetSubmerchantSignature() (string, error) {
 }
 
 func (r *Request) ToMap() map[string]interface{} {
+	if r == nil {
+		return map[string]interface{}{}
+	}
+
 	requestMap := make(map[string]interface{})
 
 	v := reflect.ValueOf(*r)
@@ -917,10 +929,25 @@ func parseOrderAmountMinorUnits(amount string) (int, error) {
 // getFieldValueByJSONTag uses reflection to search for a struct field whose "json" tag (or field name)
 // matches the provided key. It returns the field's string representation.
 func getFieldValueByJSONTag(obj interface{}, key string) (string, error) {
+	if obj == nil {
+		return "", fmt.Errorf("object is nil")
+	}
+
 	v := reflect.ValueOf(obj)
+	if !v.IsValid() {
+		return "", fmt.Errorf("object is invalid")
+	}
+
 	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return "", fmt.Errorf("object pointer is nil")
+		}
 		v = v.Elem()
 	}
+	if v.Kind() != reflect.Struct {
+		return "", fmt.Errorf("object must be a struct or pointer to struct")
+	}
+
 	t := v.Type()
 
 	// Iterate over all fields looking for a matching json tag.

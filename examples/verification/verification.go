@@ -49,6 +49,8 @@ func main() {
 		FailRedirect:    cfg.FailRedirect,
 	}
 
+	client.SetLogLevel(log.LevelDebug)
+
 	orderID := uuid.NewString()
 
 	req := &go_platon.Request{
@@ -57,6 +59,7 @@ func main() {
 			PaymentID:   ref(orderID),
 			Description: "Simple verification example",
 			Currency:    currency.UAH,
+			Amount:      40,
 		},
 	}
 

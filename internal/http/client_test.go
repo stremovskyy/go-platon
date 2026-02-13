@@ -12,6 +12,12 @@ import (
 	"github.com/stremovskyy/go-platon/platon"
 )
 
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
 func TestApi_UsesFormURLEncodedContentType(t *testing.T) {
 	var gotContentType string
 	var gotBody string
@@ -148,6 +154,50 @@ func TestApi_ReturnsErrorWhenResponseIsTooLarge(t *testing.T) {
 		t.Fatalf("expected error, got nil")
 	}
 	if !strings.Contains(err.Error(), "response exceeds") {
+		t.Fatalf("unexpected error: %q", err.Error())
+	}
+}
+
+func TestApi_ReturnsErrorOnNilResponseBody(t *testing.T) {
+	auth := &platon.Auth{Key: "k", Secret: "secret123"}
+	orderID := "order-123"
+	desc := "one-click"
+	ip := "127.0.0.1"
+	term := "https://example.com/3ds"
+	email := "payer@example.com"
+	phone := "380631234567"
+	token := "TOKEN123"
+
+	req := platon.NewRequest(platon.ActionCodeSALE).
+		WithAuth(auth).
+		WithClientKey("clientKey").
+		WithCardToken(&token).
+		WithOrderID(&orderID).
+		WithOrderAmount("1.00").
+		ForCurrency(currency.UAH).
+		WithDescription(desc).
+		WithPayerIP(&ip).
+		WithTermsURL(&term).
+		WithPayerEmail(&email).
+		WithPayerPhone(&phone).
+		SignForAction(platon.HashTypeCardTokenPayment)
+
+	c := NewClient(DefaultOptions())
+	c.SetClient(&http.Client{
+		Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       nil,
+			}, nil
+		}),
+	})
+
+	_, err := c.Api(req, "https://example.com")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "response body is nil") && !strings.Contains(err.Error(), "empty response") {
 		t.Fatalf("unexpected error: %q", err.Error())
 	}
 }
