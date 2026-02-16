@@ -34,7 +34,7 @@ import (
 func main() {
 	cfg := config.MustLoad()
 
-	payload := "id=47097-87770-07123&order=47097-87309-6110&status=SALE&card=411111%2A%2A%2A%2A1111&description=%D0%9F%D0%BE%D0%BF%D0%BE%D0%B2%D0%BD%D0%B5%D0%BD%D0%BD%D1%8F+%D0%B1%D0%B0%D0%BB%D0%B0%D0%BD%D1%81%D1%83+%D0%B2%D0%BE%D0%B4%D1%96%D1%8F+%28Platon+split+one+receiver%29&amount=0.40&currency=UAH&name=+&phone=&email=&date=2026-02-13+10%3A32%3A57&ip=250.137.176.130&sign=582d658d7d422e76b2639fac131d093e&rc_id=47097-87770-07123&rc_token=fa0500fb3f4869247b4c5532eaf799bc&issuing_bank=JPMORGAN+CHASE+BANK%2C+N.A.&ext4=&cardholder_email=&brand=VISA&terminal="
+	payload := "id=47123-08562-28823&order=47123-08266-9485&status=SALE&card=411111%2A%2A%2A%2A1111&description=Simple+verification+example&amount=0.40&currency=UAH&name=+&phone=&email=&date=2026-02-16+08%3A34%3A16&ip=248.245.244.245&sign=b8a167daec9c8510eda2f313f5e893fd&rc_id=47123-08562-28823&rc_token=d62fc9813c21a035d2b65e30e79ba995&issuing_bank=JPMORGAN+CHASE+BANK%2C+N.A.&card_token=a0b520f81ddd1a087ba83506bcb957d472b7abd5383c90e7e0b56aa3fc271583&ext4=&cardholder_email=&brand=VISA&terminal="
 	payerEmail := "payer@example.com"
 
 	form, err := go_platon.ParseWebhookForm([]byte(payload))

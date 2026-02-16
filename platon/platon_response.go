@@ -25,8 +25,10 @@
 package platon
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 type Result string
@@ -37,18 +39,20 @@ func (r Result) String() string {
 
 const (
 	ResultAccepted Result = "ACCEPTED"
+	ResultDeclined Result = "DECLINED"
 	ResultError    Result = "ERROR"
 )
 
 type Response struct {
-	Status       *string       `json:"status,omitempty"`
-	Action       *string       `json:"action"`
-	Result       *Result       `json:"result"`
-	OrderId      *string       `json:"order_id"`
-	TransId      *string       `json:"trans_id"`
-	TransDate    *string       `json:"trans_date"`
-	ResponseData *ResponseData `json:"response,omitempty"`
-	ErrorMessage string        `json:"error_message"`
+	Status        *string       `json:"status,omitempty"`
+	Action        *string       `json:"action"`
+	Result        *Result       `json:"result"`
+	OrderId       *string       `json:"order_id"`
+	TransId       *string       `json:"trans_id"`
+	TransDate     *string       `json:"trans_date"`
+	ResponseData  *ResponseData `json:"response,omitempty"`
+	ErrorMessage  string        `json:"error_message"`
+	DeclineReason string        `json:"decline_reason"`
 }
 
 type ResponseData struct {
@@ -92,6 +96,9 @@ func (p *Response) PrettyPrint() {
 	if p.ErrorMessage != "" {
 		fmt.Printf("error_message: %s\n", p.ErrorMessage)
 	}
+	if p.DeclineReason != "" {
+		fmt.Printf("decline_reason: %s\n", p.DeclineReason)
+	}
 	fmt.Println("------------------------------------------------------")
 }
 
@@ -100,12 +107,23 @@ func (p *Response) GetError() error {
 		return nil
 	}
 
-	if p.ErrorMessage != "" {
-		return fmt.Errorf("platon api error: %s", p.ErrorMessage)
+	if msg := strings.TrimSpace(p.ErrorMessage); msg != "" {
+		return fmt.Errorf("platon api error: %s", msg)
 	}
 
-	if p.Result != nil && *p.Result == ResultError {
+	if declineReason := strings.TrimSpace(p.DeclineReason); declineReason != "" {
+		return fmt.Errorf("platon api declined: %s", declineReason)
+	}
+
+	if p.Result == nil {
+		return nil
+	}
+
+	switch strings.ToUpper(strings.TrimSpace(p.Result.String())) {
+	case ResultError.String():
 		return fmt.Errorf("unknown platon api error")
+	case ResultDeclined.String():
+		return fmt.Errorf("unknown platon api decline")
 	}
 
 	return nil
@@ -127,4 +145,68 @@ func UnmarshalJSONResponse(data []byte) (*Response, error) {
 	}
 
 	return &resp, nil
+}
+
+func (p *Response) UnmarshalJSON(data []byte) error {
+	type responseJSON struct {
+		Status        *string         `json:"status,omitempty"`
+		Action        *string         `json:"action"`
+		Result        *Result         `json:"result"`
+		OrderId       *string         `json:"order_id"`
+		TransId       *string         `json:"trans_id"`
+		TransDate     *string         `json:"trans_date"`
+		ResponseData  *ResponseData   `json:"response,omitempty"`
+		ErrorMessage  json.RawMessage `json:"error_message"`
+		DeclineReason json.RawMessage `json:"decline_reason"`
+	}
+
+	var raw responseJSON
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	errorMessage, err := normalizeOptionalResponseString(raw.ErrorMessage)
+	if err != nil {
+		return fmt.Errorf("decode error_message: %w", err)
+	}
+	declineReason, err := normalizeOptionalResponseString(raw.DeclineReason)
+	if err != nil {
+		return fmt.Errorf("decode decline_reason: %w", err)
+	}
+
+	p.Status = raw.Status
+	p.Action = raw.Action
+	p.Result = raw.Result
+	p.OrderId = raw.OrderId
+	p.TransId = raw.TransId
+	p.TransDate = raw.TransDate
+	p.ResponseData = raw.ResponseData
+	p.ErrorMessage = errorMessage
+	p.DeclineReason = declineReason
+
+	return nil
+}
+
+func normalizeOptionalResponseString(raw json.RawMessage) (string, error) {
+	raw = bytes.TrimSpace(raw)
+	if len(raw) == 0 || bytes.Equal(raw, []byte("null")) {
+		return "", nil
+	}
+
+	var text string
+	if err := json.Unmarshal(raw, &text); err == nil {
+		return strings.TrimSpace(text), nil
+	}
+
+	var decoded interface{}
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		return "", err
+	}
+
+	normalized, err := json.Marshal(decoded)
+	if err != nil {
+		return "", err
+	}
+
+	return strings.TrimSpace(string(normalized)), nil
 }

@@ -19,18 +19,6 @@ type Config struct {
 	SecretKey            string
 	SuccessRedirect      string
 	FailRedirect         string
-
-	PayerEmail string
-	CardToken  string
-	WebhookURL string
-
-	AppleContainer string
-	GoogleToken    string
-
-	CardNumber string
-	CardMonth  string
-	CardYear   string
-	CardCVV    string
 }
 
 var defaultEnvPaths = []string{
@@ -88,33 +76,7 @@ func Load() (*Config, error) {
 	if cfg.FailRedirect, err = requireString("PLATON_FAIL_REDIRECT"); err != nil {
 		return nil, err
 	}
-	if cfg.PayerEmail, err = requireString("PLATON_PAYER_EMAIL"); err != nil {
-		return nil, err
-	}
-	if cfg.CardToken, err = requireString("PLATON_CARD_TOKEN"); err != nil {
-		return nil, err
-	}
-	if cfg.WebhookURL, err = requireString("PLATON_WEBHOOK_URL"); err != nil {
-		return nil, err
-	}
-	if cfg.AppleContainer, err = requireString("PLATON_APPLE_CONTAINER"); err != nil {
-		return nil, err
-	}
-	if cfg.GoogleToken, err = requireString("PLATON_GOOGLE_TOKEN"); err != nil {
-		return nil, err
-	}
-	if cfg.CardNumber, err = requireString("PLATON_CARD_NUMBER"); err != nil {
-		return nil, err
-	}
-	if cfg.CardMonth, err = requireString("PLATON_CARD_MONTH"); err != nil {
-		return nil, err
-	}
-	if cfg.CardYear, err = requireString("PLATON_CARD_YEAR"); err != nil {
-		return nil, err
-	}
-	if cfg.CardCVV, err = requireString("PLATON_CARD_CVV"); err != nil {
-		return nil, err
-	}
+
 	return cfg, nil
 }
 
