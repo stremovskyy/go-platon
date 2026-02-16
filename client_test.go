@@ -202,6 +202,55 @@ func TestBuildIAPaymentRequest_CardToken(t *testing.T) {
 	}
 }
 
+func TestBuildIAPaymentRequest_CardToken_WithMetadataExtFields(t *testing.T) {
+	merchant := &Merchant{
+		MerchantKey: "CLIENT_KEY",
+		SecretKey:   "CLIENT_PASS",
+		TermsURL:    ref("https://example.com/3ds"),
+	}
+
+	req := &Request{
+		Merchant: merchant,
+		PaymentMethod: &PaymentMethod{
+			Card: &Card{Token: ref("CARD_TOKEN")},
+		},
+		PaymentData: &PaymentData{
+			PaymentID:   ref("order-1"),
+			Amount:      100,
+			Currency:    currency.UAH,
+			Description: "desc",
+			Metadata: map[string]string{
+				"ext1":  " merchant-core ",
+				"ext2":  "   ",
+				"ext4":  "wallet-topup",
+				"ext10": "v1",
+			},
+		},
+		PersonalData: &PersonalData{
+			Email: ref("payer@example.com"),
+		},
+	}
+
+	c := &client{}
+	apiReq, _, err := c.buildIAPaymentRequest(req, false)
+	if err != nil {
+		t.Fatalf("buildIAPaymentRequest() error: %v", err)
+	}
+
+	if apiReq.Ext1 == nil || *apiReq.Ext1 != "merchant-core" {
+		t.Fatalf("ext1 mismatch: got %#v", apiReq.Ext1)
+	}
+	if apiReq.Ext2 != nil {
+		t.Fatalf("ext2 must be nil for blank metadata value, got %#v", apiReq.Ext2)
+	}
+	if apiReq.Ext4 == nil || *apiReq.Ext4 != "wallet-topup" {
+		t.Fatalf("ext4 mismatch: got %#v", apiReq.Ext4)
+	}
+	if apiReq.Ext10 == nil || *apiReq.Ext10 != "v1" {
+		t.Fatalf("ext10 mismatch: got %#v", apiReq.Ext10)
+	}
+}
+
 func TestBuildIAPaymentRequest_CardPAN_IsNotSupported(t *testing.T) {
 	merchant := &Merchant{
 		MerchantKey: "CLIENT_KEY",

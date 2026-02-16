@@ -66,6 +66,7 @@ func BuildClientServerVerificationForm(request *Request) (*platon.ClientServerVe
 			Description: request.GetDescription(),
 			Currency:    request.GetCurrency().String(),
 			OrderID:     request.GetPaymentID(),
+			Metadata:    request.GetMetadata(),
 		},
 		consts.ApiPaymentAuthURL,
 	)

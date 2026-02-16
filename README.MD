@@ -20,6 +20,7 @@ A Go client library for the Platon.ua Payment Gateway API. This library provides
 - GET_SUBMERCHANT support
 - URL-encoded requests (`application/x-www-form-urlencoded`)
 - Webhook callback parser for form payloads (`application/x-www-form-urlencoded`)
+- Single webhook endpoint routing via `ext1..ext10` metadata fields
 - Structured logging and optional request/response recording
 
 ## Installation

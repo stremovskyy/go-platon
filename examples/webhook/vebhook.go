@@ -34,7 +34,8 @@ import (
 func main() {
 	cfg := config.MustLoad()
 
-	payload := "id=47123-08562-28823&order=47123-08266-9485&status=SALE&card=411111%2A%2A%2A%2A1111&description=Simple+verification+example&amount=0.40&currency=UAH&name=+&phone=&email=&date=2026-02-16+08%3A34%3A16&ip=248.245.244.245&sign=b8a167daec9c8510eda2f313f5e893fd&rc_id=47123-08562-28823&rc_token=d62fc9813c21a035d2b65e30e79ba995&issuing_bank=JPMORGAN+CHASE+BANK%2C+N.A.&card_token=a0b520f81ddd1a087ba83506bcb957d472b7abd5383c90e7e0b56aa3fc271583&ext4=&cardholder_email=&brand=VISA&terminal="
+	// Platon sends callbacks to a single URL. Use ext fields to route internally.
+	payload := "id=47123-08562-28823&order=47123-08266-9485&status=SALE&card=411111%2A%2A%2A%2A1111&description=Simple+verification+example&amount=0.40&currency=UAH&name=+&phone=&email=&date=2026-02-16+08%3A34%3A16&ip=248.245.244.245&sign=b8a167daec9c8510eda2f313f5e893fd&rc_id=47123-08562-28823&rc_token=d62fc9813c21a035d2b65e30e79ba995&issuing_bank=JPMORGAN+CHASE+BANK%2C+N.A.&card_token=a0b520f81ddd1a087ba83506bcb957d472b7abd5383c90e7e0b56aa3fc271583&ext4=wallet-topup&cardholder_email=&brand=VISA&terminal="
 	payerEmail := "payer@example.com"
 
 	form, err := go_platon.ParseWebhookForm([]byte(payload))
@@ -49,5 +50,23 @@ func main() {
 		return
 	}
 
-	fmt.Printf("order=%s status=%s amount=%s currency=%s sign_valid=%t recurrent_token=%s\n", form.Order, form.Status, form.Amount, form.Currency, ok, form.RCToken)
+	target := "default-handler"
+	switch form.Ext4 {
+	case "wallet-topup":
+		target = "wallet-handler"
+	case "order-payment":
+		target = "orders-handler"
+	}
+
+	fmt.Printf(
+		"order=%s status=%s amount=%s currency=%s sign_valid=%t recurrent_token=%s ext4=%s route=%s\n",
+		form.Order,
+		form.Status,
+		form.Amount,
+		form.Currency,
+		ok,
+		form.RCToken,
+		form.Ext4,
+		target,
+	)
 }

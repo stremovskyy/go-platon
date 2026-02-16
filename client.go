@@ -267,6 +267,8 @@ func (c *client) buildIAPaymentRequest(request *Request, hold bool) (*platon.Req
 				WithPayerLastName(request.PersonalData.LastName)
 		}
 
+		applyExtFieldsFromMetadata(base, request.GetMetadata())
+
 		if hold {
 			base.WithHoldAuth()
 		}
@@ -344,6 +346,7 @@ func (c *client) Capture(request *Request, runOpts ...RunOption) (*platon.Respon
 		WithSplitRules(splitRules).
 		WithHashEmail(request.GetPayerEmail()).
 		SignForAction(platon.HashTypeCapture)
+	applyExtFieldsFromMetadata(apiRequest, request.GetMetadata())
 
 	if opts.isDryRun() {
 		opts.handleDryRun(consts.ApiPostUnqURL, apiRequest)
@@ -385,6 +388,7 @@ func (c *client) Refund(request *Request, runOpts ...RunOption) (*platon.Respons
 		WithAmountMinorUnits(request.PaymentData.Amount).
 		WithSplitRules(splitRules).
 		WithHashEmail(request.GetPayerEmail())
+	applyExtFieldsFromMetadata(apiRequest, request.GetMetadata())
 
 	// Optional fast refund flag. If user sets PaymentData.Metadata["immediately"] to "Y"/"true"/"1",
 	// send `immediately=Y` as per IA docs.
@@ -459,6 +463,7 @@ func (c *client) Credit(request *Request, runOpts ...RunOption) (*platon.Respons
 	} else {
 		return nil, fmt.Errorf("credit: card_token is required")
 	}
+	applyExtFieldsFromMetadata(apiRequest, request.GetMetadata())
 
 	if opts.isDryRun() {
 		opts.handleDryRun(consts.ApiP2PUnqURL, apiRequest)
@@ -570,6 +575,23 @@ func stringPointerFromMetadata(metadata map[string]string, key string) *string {
 	}
 
 	return &trimmed
+}
+
+func applyExtFieldsFromMetadata(apiRequest *platon.Request, metadata map[string]string) {
+	if apiRequest == nil || metadata == nil {
+		return
+	}
+
+	apiRequest.Ext1 = stringPointerFromMetadata(metadata, "ext1")
+	apiRequest.Ext2 = stringPointerFromMetadata(metadata, "ext2")
+	apiRequest.Ext3 = stringPointerFromMetadata(metadata, "ext3")
+	apiRequest.Ext4 = stringPointerFromMetadata(metadata, "ext4")
+	apiRequest.Ext5 = stringPointerFromMetadata(metadata, "ext5")
+	apiRequest.Ext6 = stringPointerFromMetadata(metadata, "ext6")
+	apiRequest.Ext7 = stringPointerFromMetadata(metadata, "ext7")
+	apiRequest.Ext8 = stringPointerFromMetadata(metadata, "ext8")
+	apiRequest.Ext9 = stringPointerFromMetadata(metadata, "ext9")
+	apiRequest.Ext10 = stringPointerFromMetadata(metadata, "ext10")
 }
 
 func firstNonEmptyPointer(values ...*string) *string {

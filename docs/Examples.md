@@ -35,6 +35,7 @@ See `examples/status/status.go`.
 ## Webhook Callback (form-urlencoded)
 
 See `examples/webhook/vebhook.go`.
+For Platon integration, use a single webhook endpoint and route internally by `ext*` callback fields.
 
 ## Split / GET_SUBMERCHANT
 

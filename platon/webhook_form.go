@@ -51,7 +51,16 @@ type WebhookForm struct {
 	RCID            string
 	RCToken         string
 	IssuingBank     string
+	Ext1            string
+	Ext2            string
+	Ext3            string
 	Ext4            string
+	Ext5            string
+	Ext6            string
+	Ext7            string
+	Ext8            string
+	Ext9            string
+	Ext10           string
 	CardholderEmail string
 	Brand           string
 	Terminal        string
@@ -95,7 +104,16 @@ func ParseWebhookValues(values url.Values) *WebhookForm {
 		RCID:            strings.TrimSpace(values.Get("rc_id")),
 		RCToken:         strings.TrimSpace(values.Get("rc_token")),
 		IssuingBank:     strings.TrimSpace(values.Get("issuing_bank")),
+		Ext1:            strings.TrimSpace(values.Get("ext1")),
+		Ext2:            strings.TrimSpace(values.Get("ext2")),
+		Ext3:            strings.TrimSpace(values.Get("ext3")),
 		Ext4:            strings.TrimSpace(values.Get("ext4")),
+		Ext5:            strings.TrimSpace(values.Get("ext5")),
+		Ext6:            strings.TrimSpace(values.Get("ext6")),
+		Ext7:            strings.TrimSpace(values.Get("ext7")),
+		Ext8:            strings.TrimSpace(values.Get("ext8")),
+		Ext9:            strings.TrimSpace(values.Get("ext9")),
+		Ext10:           strings.TrimSpace(values.Get("ext10")),
 		CardholderEmail: strings.TrimSpace(values.Get("cardholder_email")),
 		Brand:           strings.TrimSpace(values.Get("brand")),
 		Terminal:        strings.TrimSpace(values.Get("terminal")),

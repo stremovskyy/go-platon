@@ -104,7 +104,37 @@ If you need full control over HTML/form rendering, use
 
 ## Webhook Callback (`application/x-www-form-urlencoded`)
 
-Platon sends callback payload as form-urlencoded data (not XML). Parse request body and verify signature:
+Platon uses a single callback URL for all payment flows.
+Recommended integration pattern:
+
+- send routing context in `ext1..ext10`
+- receive all callbacks on one frontend webhook endpoint
+- verify `sign`
+- route internally by `ext*` values
+
+`go-platon` maps `PaymentData.Metadata["ext1"]..["ext10"]` to Platon request fields `ext1..ext10`.
+
+```mermaid
+flowchart LR
+    A["Your backend: create payment/hold/capture/refund"] -->| "ext4=wallet-topup" | B["Platon API"]
+    B --> C["Single callback URL: /platon/webhook"]
+    C --> D{"Verify sign"}
+    D -->| "invalid" | E["Reject callback"]
+    D -->| "valid" | F{"ext4 value"}
+    F -->| "wallet-topup" | G["Wallet service handler"]
+    F -->| "order-payment" | H["Orders service handler"]
+    F -->| "other" | I["Default/manual queue"]
+```
+
+Example: send route marker in payment request:
+
+```go
+req.PaymentData.Metadata = map[string]string{
+	"ext4": "wallet-topup",
+}
+```
+
+Then parse callback payload and route:
 
 ```go
 body, err := io.ReadAll(r.Body)
@@ -123,6 +153,15 @@ if err != nil {
 }
 if !ok {
 	panic("invalid webhook sign")
+}
+
+switch form.Ext4 {
+case "wallet-topup":
+	// forward to wallet callback handler
+case "order-payment":
+	// forward to order callback handler
+default:
+	// fallback handler
 }
 ```
 

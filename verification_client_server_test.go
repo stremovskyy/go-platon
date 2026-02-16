@@ -124,6 +124,55 @@ func TestBuildClientServerVerificationForm_WithoutOrderID(t *testing.T) {
 	}
 }
 
+func TestBuildClientServerVerificationForm_WithExtMetadata(t *testing.T) {
+	paymentID := "order-2"
+	req := &Request{
+		Merchant: &Merchant{
+			MerchantKey:     "CLIENT_KEY",
+			SecretKey:       "SECRET_KEY",
+			SuccessRedirect: "https://merchant.example/success",
+		},
+		PaymentData: &PaymentData{
+			PaymentID:   &paymentID,
+			Currency:    currency.UAH,
+			Description: "Verify card",
+			Metadata: map[string]string{
+				"ext4": "verification:driver",
+				"ext2": "   ",
+			},
+		},
+	}
+
+	form, err := BuildClientServerVerificationForm(req)
+	if err != nil {
+		t.Fatalf("BuildClientServerVerificationForm() error: %v", err)
+	}
+
+	rawData, err := base64.StdEncoding.DecodeString(form.Fields["data"])
+	if err != nil {
+		t.Fatalf("cannot decode data: %v", err)
+	}
+
+	var payload map[string]string
+	if err := json.Unmarshal(rawData, &payload); err != nil {
+		t.Fatalf("cannot decode JSON payload: %v", err)
+	}
+
+	if payload["ext4"] != "verification:driver" {
+		t.Fatalf("ext4 mismatch: got %q", payload["ext4"])
+	}
+	if _, exists := payload["ext2"]; exists {
+		t.Fatalf("unexpected ext2 in payload for blank metadata value")
+	}
+
+	if form.Fields["ext4"] != "verification:driver" {
+		t.Fatalf("form field ext4 mismatch: got %q", form.Fields["ext4"])
+	}
+	if _, exists := form.Fields["ext2"]; exists {
+		t.Fatalf("unexpected ext2 form field for blank metadata value")
+	}
+}
+
 func TestBuildClientServerVerificationForm_Validation(t *testing.T) {
 	validPaymentID := "order-1"
 	valid := &Request{

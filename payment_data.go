@@ -52,6 +52,10 @@ type PaymentData struct {
 	// RelatedIds is a list of related payment IDs.
 	RelatedIds []int64
 	// Metadata is a map of additional data.
+	// Supported integration keys:
+	// - ext1..ext10: passed to Platon request fields with the same names.
+	// - immediately: for Refund, "Y"/"true"/"1" enables fast refund mode.
+	// - platon_flow: for Status, value "a2c" switches to A2C status endpoint.
 	Metadata map[string]string
 }
 
