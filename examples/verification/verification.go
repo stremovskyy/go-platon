@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2024 Anton Stremovskyy
+ * Copyright (c) 2026 Anton Stremovskyy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,33 +31,38 @@ import (
 
 	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/currency"
+	"github.com/stremovskyy/go-platon/examples/demo"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
 	"github.com/stremovskyy/go-platon/log"
 )
 
 func main() {
 	cfg := config.MustLoad()
-	var client go_platon.Platon = go_platon.NewDefaultClient()
+	var client = go_platon.NewDefaultClient()
 	client.SetLogLevel(log.LevelDebug)
 
 	merchant := &go_platon.Merchant{
 		Name:            cfg.MerchantName,
 		MerchantID:      cfg.MerchantID,
-		MerchantKey:     cfg.MerchantKey,
+		MerchantKey:     demo.ClientKey,
 		SecretKey:       cfg.SecretKey,
 		SuccessRedirect: cfg.SuccessRedirect,
 		FailRedirect:    cfg.FailRedirect,
+		ClientIP:        ref(demo.PayerIP),
+		TermsURL:        ref(demo.TermsURL3DS),
 	}
-
-	orderID := uuid.NewString()
 
 	req := &go_platon.Request{
 		Merchant: merchant,
 		PaymentData: &go_platon.PaymentData{
-			PaymentID:   ref(orderID),
-			Description: "Simple verification example",
+			PaymentID:   ref(uuid.New().String()),
+			Description: demo.Description,
 			Currency:    currency.UAH,
-			Amount:      40,
+			Amount:      demo.AmountMinor,
+			Metadata: map[string]string{
+				"ext4": demo.Ext4,
+				"ext5": demo.Ext5,
+			},
 		},
 	}
 

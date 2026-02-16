@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2024 Anton Stremovskyy
+ * Copyright (c) 2026 Anton Stremovskyy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -159,20 +159,33 @@ func (c *client) SubmerchantAvailableForSplit(request *Request, runOpts ...RunOp
 	if err != nil {
 		return false, fmt.Errorf("split availability API call: %w", err)
 	}
+	if response == nil {
+		return false, fmt.Errorf("split availability: empty response")
+	}
 
 	status, ok := response.SubmerchantIDStatus()
-	if !ok {
-		return false, fmt.Errorf("split availability: response does not contain submerchant_id_status")
+	if ok {
+		switch strings.ToUpper(strings.TrimSpace(status)) {
+		case "ENABLED":
+			return true, nil
+		case "DISABLED", "LOCKED":
+			return false, nil
+		default:
+			return false, fmt.Errorf("split availability: unknown submerchant_id_status %q", status)
+		}
 	}
 
-	switch strings.ToUpper(status) {
-	case "ENABLED":
-		return true, nil
-	case "DISABLED":
-		return false, nil
-	default:
-		return false, fmt.Errorf("split availability: unknown submerchant_id_status %q", status)
+	if response.Status != nil {
+		apiStatus := strings.ToUpper(strings.TrimSpace(*response.Status))
+		if apiStatus == "FAILED" {
+			return false, fmt.Errorf("split availability: request failed (status=FAILED)")
+		}
+		if apiStatus != "" {
+			return false, fmt.Errorf("split availability: response status %q without submerchant_id_status", apiStatus)
+		}
 	}
+
+	return false, fmt.Errorf("split availability: response does not contain submerchant_id_status")
 }
 
 func (c *client) Payment(request *Request, runOpts ...RunOption) (*platon.Response, error) {
@@ -523,15 +536,19 @@ func resolveA2CPayerData(request *Request) a2cPayerData {
 		stringPointerFromMetadata(metadata, "payer_address"),
 		stringRef(defaultA2CAddress),
 	)
-	country := normalizeTwoLetterValue(firstNonEmptyPointer(
-		stringPointerFromMetadata(metadata, "payer_country"),
-		stringRef(defaultA2CCountry),
-	), defaultA2CCountry)
-	state := normalizeTwoLetterValue(firstNonEmptyPointer(
-		stringPointerFromMetadata(metadata, "payer_state"),
-		stringPointerFromMetadata(metadata, "payer_country"),
-		stringRef(defaultA2CState),
-	), defaultA2CState)
+	country := normalizeTwoLetterValue(
+		firstNonEmptyPointer(
+			stringPointerFromMetadata(metadata, "payer_country"),
+			stringRef(defaultA2CCountry),
+		), defaultA2CCountry,
+	)
+	state := normalizeTwoLetterValue(
+		firstNonEmptyPointer(
+			stringPointerFromMetadata(metadata, "payer_state"),
+			stringPointerFromMetadata(metadata, "payer_country"),
+			stringRef(defaultA2CState),
+		), defaultA2CState,
+	)
 	city := firstNonEmptyPointer(
 		stringPointerFromMetadata(metadata, "payer_city"),
 		stringRef(defaultA2CCity),

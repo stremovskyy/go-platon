@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2024 Anton Stremovskyy
+ * Copyright (c) 2026 Anton Stremovskyy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,33 +28,30 @@ import (
 	"fmt"
 
 	go_platon "github.com/stremovskyy/go-platon"
+	"github.com/stremovskyy/go-platon/examples/demo"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
-	"github.com/stremovskyy/go-platon/examples/internal/demo"
 	"github.com/stremovskyy/go-platon/log"
 )
 
 func main() {
 	cfg := config.MustLoad()
-	var client go_platon.Platon = go_platon.NewDefaultClient()
+	var client = go_platon.NewDefaultClient()
 	client.SetLogLevel(log.LevelDebug)
 
 	merchant := &go_platon.Merchant{
-		MerchantKey: cfg.MerchantKey,
+		MerchantKey: demo.ClientKey,
 		SecretKey:   cfg.SecretKey,
 	}
 
 	req := &go_platon.Request{
 		Merchant: merchant,
-		PaymentMethod: &go_platon.PaymentMethod{
-			Card: &go_platon.Card{
-				Pan: ref(demo.CardNumber),
-			},
-		},
 		PaymentData: &go_platon.PaymentData{
-			PlatonTransID: ref("632508054"),
-			Amount:        100,
+			PlatonTransID: ref(demo.SampleRefundTransID),
+			Amount:        demo.AmountMinor,
 			Metadata: map[string]string{
 				"immediately": "Y",
+				"ext4":        demo.Ext4,
+				"ext5":        demo.Ext5,
 			},
 		},
 		PersonalData: &go_platon.PersonalData{

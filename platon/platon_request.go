@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2024 Anton Stremovskyy
+ * Copyright (c) 2026 Anton Stremovskyy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -58,7 +58,7 @@ type Request struct {
 	PaymentToken *string `json:"payment_token,omitempty" validate:"omitempty"`
 
 	PayerEmail     *string `json:"payer_email,omitempty" validate:"omitempty,email,max=256"`
-	PayerPhone     *string `json:"payer_phone,omitempty" validate:"omitempty,numeric,startswith=380,max=32"`
+	PayerPhone     *string `json:"payer_phone,omitempty" validate:"omitempty,numeric,max=32"`
 	PayerFirstName *string `json:"payer_first_name,omitempty" validate:"omitempty,max=32"`
 	PayerLastName  *string `json:"payer_last_name,omitempty" validate:"omitempty,max=32"`
 	PayerAddress   *string `json:"payer_address,omitempty" validate:"omitempty,max=256"`
@@ -71,7 +71,7 @@ type Request struct {
 	CardExpMonth   *string `json:"card_exp_month,omitempty" validate:"omitempty,numeric,len=2"`
 	CardExpYear    *string `json:"card_exp_year,omitempty" validate:"omitempty,numeric,len=4"`
 	CardCvv2       *string `json:"card_cvv2,omitempty" validate:"omitempty,numeric,len=3"`
-	CardToken      *string `json:"card_token,omitempty" validate:"omitempty,max=32"`
+	CardToken      *string `json:"card_token,omitempty" validate:"omitempty"`
 
 	// "auth" parameter: Y to create HOLD (preauth), N for normal SALE.
 	AuthFlag *string `json:"auth,omitempty" validate:"omitempty,oneof=Y N"`
@@ -551,9 +551,9 @@ func (r *Request) validateByHashType() error {
 		if r.OrderID == nil || *r.OrderID == "" {
 			return fmt.Errorf("verification: order_id is required")
 		}
-		if len(*r.OrderID) > 32 {
-			return fmt.Errorf("verification: order_id must be <= 32 characters")
-		}
+		// if len(*r.OrderID) > 32 {
+		// 	return fmt.Errorf("verification: order_id must be <= 32 characters")
+		// }
 		if r.OrderCurrency == "" {
 			return fmt.Errorf("verification: order_currency is required")
 		}
@@ -618,9 +618,9 @@ func (r *Request) validateByHashType() error {
 		if r.OrderID == nil || *r.OrderID == "" {
 			return fmt.Errorf("card_payment: order_id is required")
 		}
-		if len(*r.OrderID) > 32 {
-			return fmt.Errorf("card_payment: order_id must be <= 32 characters")
-		}
+		// if len(*r.OrderID) > 32 {
+		// 	return fmt.Errorf("card_payment: order_id must be <= 32 characters")
+		// }
 		if r.OrderAmount == "" {
 			return fmt.Errorf("card_payment: order_amount is required")
 		}
@@ -686,9 +686,9 @@ func (r *Request) validateByHashType() error {
 		if r.OrderID == nil || *r.OrderID == "" {
 			return fmt.Errorf("card_token_payment: order_id is required")
 		}
-		if len(*r.OrderID) > 32 {
-			return fmt.Errorf("card_token_payment: order_id must be <= 32 characters")
-		}
+		// if len(*r.OrderID) > 32 {
+		// 	return fmt.Errorf("card_token_payment: order_id must be <= 32 characters")
+		// }
 		if r.OrderAmount == "" {
 			return fmt.Errorf("card_token_payment: order_amount is required")
 		}
@@ -836,9 +836,9 @@ func (r *Request) validateByHashType() error {
 		if r.OrderID == nil || *r.OrderID == "" {
 			return fmt.Errorf("recurring: order_id is required")
 		}
-		if len(*r.OrderID) > 32 {
-			return fmt.Errorf("recurring: order_id must be <= 32 characters")
-		}
+		// if len(*r.OrderID) > 32 {
+		// 	return fmt.Errorf("recurring: order_id must be <= 32 characters")
+		// }
 		if r.OrderAmount == "" {
 			return fmt.Errorf("recurring: order_amount is required")
 		}

@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2024 Anton Stremovskyy
+ * Copyright (c) 2026 Anton Stremovskyy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -149,15 +149,18 @@ func UnmarshalJSONResponse(data []byte) (*Response, error) {
 
 func (p *Response) UnmarshalJSON(data []byte) error {
 	type responseJSON struct {
-		Status        *string         `json:"status,omitempty"`
-		Action        *string         `json:"action"`
-		Result        *Result         `json:"result"`
-		OrderId       *string         `json:"order_id"`
-		TransId       *string         `json:"trans_id"`
-		TransDate     *string         `json:"trans_date"`
-		ResponseData  *ResponseData   `json:"response,omitempty"`
-		ErrorMessage  json.RawMessage `json:"error_message"`
-		DeclineReason json.RawMessage `json:"decline_reason"`
+		Status              *string         `json:"status,omitempty"`
+		Action              *string         `json:"action"`
+		Result              *Result         `json:"result"`
+		OrderId             *string         `json:"order_id"`
+		TransId             *string         `json:"trans_id"`
+		TransDate           *string         `json:"trans_date"`
+		ResponseData        *ResponseData   `json:"response,omitempty"`
+		SubmerchantID       *string         `json:"submerchant_id,omitempty"`
+		SubmerchantIDStatus *string         `json:"submerchant_id_status,omitempty"`
+		Hash                *string         `json:"hash,omitempty"`
+		ErrorMessage        json.RawMessage `json:"error_message"`
+		DeclineReason       json.RawMessage `json:"decline_reason"`
 	}
 
 	var raw responseJSON
@@ -180,7 +183,28 @@ func (p *Response) UnmarshalJSON(data []byte) error {
 	p.OrderId = raw.OrderId
 	p.TransId = raw.TransId
 	p.TransDate = raw.TransDate
-	p.ResponseData = raw.ResponseData
+	responseData := raw.ResponseData
+	if responseData == nil {
+		if raw.SubmerchantID != nil || raw.SubmerchantIDStatus != nil || raw.Hash != nil {
+			responseData = &ResponseData{
+				SubmerchantID:       raw.SubmerchantID,
+				SubmerchantIDStatus: raw.SubmerchantIDStatus,
+				Hash:                raw.Hash,
+			}
+		}
+	} else {
+		if responseData.SubmerchantID == nil {
+			responseData.SubmerchantID = raw.SubmerchantID
+		}
+		if responseData.SubmerchantIDStatus == nil {
+			responseData.SubmerchantIDStatus = raw.SubmerchantIDStatus
+		}
+		if responseData.Hash == nil {
+			responseData.Hash = raw.Hash
+		}
+	}
+
+	p.ResponseData = responseData
 	p.ErrorMessage = errorMessage
 	p.DeclineReason = declineReason
 

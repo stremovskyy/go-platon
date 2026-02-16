@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2024 Anton Stremovskyy
+ * Copyright (c) 2026 Anton Stremovskyy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,36 +27,48 @@ package main
 import (
 	"fmt"
 
+	"github.com/google/uuid"
+
 	go_platon "github.com/stremovskyy/go-platon"
+	"github.com/stremovskyy/go-platon/examples/demo"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
-	"github.com/stremovskyy/go-platon/examples/internal/demo"
 	"github.com/stremovskyy/go-platon/log"
 )
 
 func main() {
 	cfg := config.MustLoad()
-	var client go_platon.Platon = go_platon.NewDefaultClient()
+	var client = go_platon.NewDefaultClient()
 	client.SetLogLevel(log.LevelDebug)
 
 	merchant := &go_platon.Merchant{
-		MerchantKey:     cfg.MerchantKey,
+		MerchantKey:     demo.ClientKey,
 		SecretKey:       cfg.SecretKey,
 		SuccessRedirect: cfg.SuccessRedirect,
 		FailRedirect:    cfg.FailRedirect,
+		ClientIP:        ref(demo.PayerIP),
+		TermsURL:        ref(demo.TermsURL3DS),
 	}
 
 	req := &go_platon.Request{
 		Merchant: merchant,
 		PaymentData: &go_platon.PaymentData{
-			PaymentID:   ref("credit-order-1"),
-			Amount:      100, // 1.00 UAH
+			PaymentID:   ref(uuid.New().String()),
+			Amount:      demo.AmountMinor,
 			Currency:    "UAH",
-			Description: "A2C payout example",
+			Description: demo.Description,
+			Metadata: map[string]string{
+				"ext4": demo.Ext4,
+				"ext5": demo.Ext5,
+			},
 		},
 		PaymentMethod: &go_platon.PaymentMethod{
 			Card: &go_platon.Card{
 				Token: ref(demo.CardToken),
 			},
+		},
+		PersonalData: &go_platon.PersonalData{
+			Email: ref(demo.PayerEmail),
+			Phone: ref(demo.PayerPhone),
 		},
 	}
 

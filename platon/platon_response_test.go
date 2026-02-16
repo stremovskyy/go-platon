@@ -1,3 +1,27 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2026 Anton Stremovskyy
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 package platon
 
 import (
@@ -19,6 +43,26 @@ func TestUnmarshalJSONResponse_SubmerchantStatus(t *testing.T) {
 	}
 	if status != "ENABLED" {
 		t.Fatalf("expected ENABLED, got %q", status)
+	}
+}
+
+func TestUnmarshalJSONResponse_SubmerchantStatusTopLevel(t *testing.T) {
+	raw := []byte(`{"status":"SUCCESS","action":"GET_SUBMERCHANT","submerchant_id":"12345678","submerchant_id_status":"ENABLED","hash":"abc123"}`)
+
+	resp, err := UnmarshalJSONResponse(raw)
+	if err != nil {
+		t.Fatalf("UnmarshalJSONResponse() error: %v", err)
+	}
+
+	status, ok := resp.SubmerchantIDStatus()
+	if !ok {
+		t.Fatalf("expected submerchant status payload")
+	}
+	if status != "ENABLED" {
+		t.Fatalf("expected ENABLED, got %q", status)
+	}
+	if resp.ResponseData == nil || resp.ResponseData.Hash == nil || *resp.ResponseData.Hash != "abc123" {
+		t.Fatalf("expected top-level hash to be mapped into response data")
 	}
 }
 

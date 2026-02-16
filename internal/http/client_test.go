@@ -1,3 +1,27 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2026 Anton Stremovskyy
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 package http
 
 import (
@@ -22,14 +46,18 @@ func TestApi_UsesFormURLEncodedContentType(t *testing.T) {
 	var gotContentType string
 	var gotBody string
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotContentType = r.Header.Get("Content-Type")
-		b, _ := io.ReadAll(r.Body)
-		gotBody = string(b)
+	srv := httptest.NewServer(
+		http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				gotContentType = r.Header.Get("Content-Type")
+				b, _ := io.ReadAll(r.Body)
+				gotBody = string(b)
 
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"result":"ACCEPTED"}`))
-	}))
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"result":"ACCEPTED"}`))
+			},
+		),
+	)
 	defer srv.Close()
 
 	auth := &platon.Auth{Key: "k", Secret: "secret123"}
@@ -77,10 +105,14 @@ func TestApi_UsesFormURLEncodedContentType(t *testing.T) {
 }
 
 func TestApi_ReturnsErrorOnNon2xxStatus(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusBadGateway)
-		_, _ = w.Write([]byte(`gateway down`))
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(
+			func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusBadGateway)
+				_, _ = w.Write([]byte(`gateway down`))
+			},
+		),
+	)
 	defer srv.Close()
 
 	auth := &platon.Auth{Key: "k", Secret: "secret123"}
@@ -119,10 +151,14 @@ func TestApi_ReturnsErrorOnNon2xxStatus(t *testing.T) {
 func TestApi_ReturnsErrorWhenResponseIsTooLarge(t *testing.T) {
 	tooLarge := bytes.Repeat([]byte("x"), maxResponseBodyBytes+16)
 
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(tooLarge)
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(
+			func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(tooLarge)
+			},
+		),
+	)
 	defer srv.Close()
 
 	auth := &platon.Auth{Key: "k", Secret: "secret123"}
@@ -183,15 +219,19 @@ func TestApi_ReturnsErrorOnNilResponseBody(t *testing.T) {
 		SignForAction(platon.HashTypeCardTokenPayment)
 
 	c := NewClient(DefaultOptions())
-	c.SetClient(&http.Client{
-		Transport: roundTripFunc(func(_ *http.Request) (*http.Response, error) {
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Header:     make(http.Header),
-				Body:       nil,
-			}, nil
-		}),
-	})
+	c.SetClient(
+		&http.Client{
+			Transport: roundTripFunc(
+				func(_ *http.Request) (*http.Response, error) {
+					return &http.Response{
+						StatusCode: http.StatusOK,
+						Header:     make(http.Header),
+						Body:       nil,
+					}, nil
+				},
+			),
+		},
+	)
 
 	_, err := c.Api(req, "https://example.com")
 	if err == nil {
@@ -203,10 +243,14 @@ func TestApi_ReturnsErrorOnNilResponseBody(t *testing.T) {
 }
 
 func TestApi_ReturnsDeclinedErrorFromReason(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"result":"DECLINED","decline_reason":"102: Token is not active","error_message":null}`))
-	}))
+	srv := httptest.NewServer(
+		http.HandlerFunc(
+			func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"result":"DECLINED","decline_reason":"102: Token is not active","error_message":null}`))
+			},
+		),
+	)
 	defer srv.Close()
 
 	auth := &platon.Auth{Key: "k", Secret: "secret123"}

@@ -1,3 +1,27 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2026 Anton Stremovskyy
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 package go_platon
 
 import (
@@ -29,10 +53,14 @@ func TestCredit_CardToken_DryRun_BuildsA2CRequest(t *testing.T) {
 		},
 	}
 
-	_, err := c.Credit(request, DryRun(func(endpoint string, payload any) {
-		capturedEndpoint = endpoint
-		capturedRequest, _ = payload.(*platon.Request)
-	}))
+	_, err := c.Credit(
+		request, DryRun(
+			func(endpoint string, payload any) {
+				capturedEndpoint = endpoint
+				capturedRequest, _ = payload.(*platon.Request)
+			},
+		),
+	)
 	if err != nil {
 		t.Fatalf("Credit() unexpected error: %v", err)
 	}
@@ -75,10 +103,14 @@ func TestStatus_DryRun_A2CFlow_UsesP2PEndpointAndHash(t *testing.T) {
 		},
 	}
 
-	_, err := c.Status(request, DryRun(func(endpoint string, payload any) {
-		capturedEndpoint = endpoint
-		capturedRequest, _ = payload.(*platon.Request)
-	}))
+	_, err := c.Status(
+		request, DryRun(
+			func(endpoint string, payload any) {
+				capturedEndpoint = endpoint
+				capturedRequest, _ = payload.(*platon.Request)
+			},
+		),
+	)
 	if err != nil {
 		t.Fatalf("Status() unexpected error: %v", err)
 	}

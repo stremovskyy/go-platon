@@ -46,7 +46,7 @@ func main() {
 			},
 		},
 		PersonalData: &go_platon.PersonalData{
-			Email: utils.Ref("payer@example.com"),
+			Email: utils.Ref("no-reply@example.com"),
 			Phone: utils.Ref("380631234567"),
 		},
 	}
@@ -147,7 +147,7 @@ if err != nil {
 	panic(err)
 }
 
-ok, err := form.VerifySign("CLIENT_PASS", "payer@example.com")
+ok, err := form.VerifySign("CLIENT_PASS", "no-reply@example.com")
 if err != nil {
 	panic(err)
 }
@@ -177,8 +177,12 @@ Signature uses `order_id + client_pass` (uppercase MD5).
 
 ## GET_SUBMERCHANT
 
-`client.SubmerchantAvailableForSplit(req)` sends `GET_SUBMERCHANT` to IA `/configuration/` and returns `true` when
-`submerchant_id_status=ENABLED`.
+`client.SubmerchantAvailableForSplit(req)` sends `GET_SUBMERCHANT` to IA `/configuration/`.
+It returns:
+
+- `true` when `submerchant_id_status=ENABLED`
+- `false` when `submerchant_id_status=DISABLED` or `LOCKED`
+- error when response `status=FAILED` or response payload is malformed
 
 Required:
 

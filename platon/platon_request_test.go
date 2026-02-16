@@ -1,3 +1,27 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2026 Anton Stremovskyy
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
 package platon
 
 import (
@@ -412,10 +436,12 @@ func TestSignAndPrepare_CaptureWithSplitRules(t *testing.T) {
 		WithClientKey("clientKey").
 		WithTransID(&transID).
 		WithAmount("10.00").
-		WithSplitRules(SplitRules{
-			"submerchant_01": "2.50",
-			"submerchant_02": "7.50",
-		}).
+		WithSplitRules(
+			SplitRules{
+				"submerchant_01": "2.50",
+				"submerchant_02": "7.50",
+			},
+		).
 		WithHashEmail(&email).
 		SignForAction(HashTypeCapture)
 
@@ -441,10 +467,12 @@ func TestSignAndPrepare_CreditVoidSplitRulesExceedAmount(t *testing.T) {
 		WithClientKey("clientKey").
 		WithTransID(&transID).
 		WithAmount("1.00").
-		WithSplitRules(SplitRules{
-			"submerchant_01": "0.70",
-			"submerchant_02": "0.40",
-		}).
+		WithSplitRules(
+			SplitRules{
+				"submerchant_01": "0.70",
+				"submerchant_02": "0.40",
+			},
+		).
 		WithHashEmail(&email).
 		SignForAction(HashTypeCreditVoid)
 

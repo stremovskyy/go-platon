@@ -1,7 +1,7 @@
 /*
  * MIT License
  *
- * Copyright (c) 2024 Anton Stremovskyy
+ * Copyright (c) 2026 Anton Stremovskyy
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,8 +31,8 @@ import (
 
 	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/currency"
+	"github.com/stremovskyy/go-platon/examples/demo"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
-	"github.com/stremovskyy/go-platon/examples/internal/demo"
 	"github.com/stremovskyy/go-platon/log"
 )
 
@@ -43,14 +43,15 @@ func main() {
 
 	merchant := &go_platon.Merchant{
 		MerchantID:      cfg.MerchantID,
-		MerchantKey:     cfg.MerchantKey,
+		MerchantKey:     demo.ClientKey,
 		SecretKey:       cfg.SecretKey,
 		SuccessRedirect: cfg.SuccessRedirect,
 		FailRedirect:    cfg.FailRedirect,
-		TermsURL:        ref("https://merchant.example/3ds"),
+		ClientIP:        ref(demo.PayerIP),
+		TermsURL:        ref(demo.TermsURL3DS),
 	}
 
-	submerchantID := "12345678"
+	submerchantID := demo.Submerchant
 	checkReq := &go_platon.Request{
 		Merchant: merchant,
 		PaymentData: &go_platon.PaymentData{
@@ -68,30 +69,29 @@ func main() {
 		return
 	}
 
-	orderID := uuid.NewString()
 	req := &go_platon.Request{
 		Merchant: merchant,
 		PaymentMethod: &go_platon.PaymentMethod{
 			Card: &go_platon.Card{
-				Pan:             ref(demo.CardNumber),
-				ExpirationMonth: ref(demo.CardMonth),
-				ExpirationYear:  ref(demo.CardYear),
-				Cvv2:            ref(demo.CardCVV),
+				Token: ref(demo.CardToken),
 			},
 		},
 		PaymentData: &go_platon.PaymentData{
-			PaymentID:   &orderID,
-			Amount:      300,
+			PaymentID:   ref(uuid.New().String()),
+			Amount:      demo.AmountMinor,
 			Currency:    currency.UAH,
-			Description: "Simple split payment example",
+			Description: demo.Description,
 			SplitRules: []go_platon.SplitRule{
-				{SubmerchantIdentification: "12345678", Amount: 100},
-				{SubmerchantIdentification: "87654321", Amount: 200},
+				{SubmerchantIdentification: demo.Submerchant, Amount: demo.AmountMinor},
+			},
+			Metadata: map[string]string{
+				"ext4": demo.Ext4,
+				"ext5": demo.Ext5,
 			},
 		},
 		PersonalData: &go_platon.PersonalData{
 			Email: ref(demo.PayerEmail),
-			Phone: ref("380631234567"),
+			Phone: ref(demo.PayerPhone),
 		},
 	}
 
