@@ -102,15 +102,39 @@ fmt.Println(verificationURL.String())
 If you need full control over HTML/form rendering, use
 `go_platon.BuildClientServerVerificationForm(req)` and submit returned fields manually.
 
-## GET_TRANS_STATUS
+## Webhook Callback (`application/x-www-form-urlencoded`)
 
-`client.Status(req)` requires:
+Platon sends callback payload as form-urlencoded data (not XML). Parse request body and verify signature:
 
-- `PaymentData.PlatonTransID` (Platon `trans_id`, string) or `PaymentData.PlatonPaymentID` (legacy int64)
-- `PaymentMethod.Card.Pan` (only the first 6 and last 4 are used for signature generation)
+```go
+body, err := io.ReadAll(r.Body)
+if err != nil {
+	panic(err)
+}
 
-`PersonalData.Email` is used only for signature generation and is not sent to Platon. If the email was not provided
-in the initial payment request, IA docs allow signing with an empty email.
+form, err := go_platon.ParseWebhookForm(body)
+if err != nil {
+	panic(err)
+}
+
+ok, err := form.VerifySign("CLIENT_PASS", "payer@example.com")
+if err != nil {
+	panic(err)
+}
+if !ok {
+	panic("invalid webhook sign")
+}
+```
+
+## GET_TRANS_STATUS_BY_ORDER
+
+`client.Status(req)` sends `GET_TRANS_STATUS_BY_ORDER`.
+
+Required:
+
+- `PaymentData.PaymentID` (merchant `order_id`)
+
+Signature uses `order_id + client_pass` (uppercase MD5).
 
 ## GET_SUBMERCHANT
 
@@ -158,7 +182,6 @@ Required:
 
 - `PaymentData.PlatonTransID` (or legacy `PaymentData.PlatonPaymentID`)
 - `PaymentData.Amount` (minor units, e.g. 100 -> 1.00)
-- `PaymentMethod.Card.Pan` (only first 6 + last 4 are used for signature)
 
 Optional:
 
@@ -172,13 +195,29 @@ Required:
 
 - `PaymentData.PlatonTransID` (or legacy `PaymentData.PlatonPaymentID`)
 - `PaymentData.Amount` (minor units, e.g. 100 -> 1.00)
-- `PaymentMethod.Card.Pan` (only first 6 + last 4 are used for signature)
 
 Optional:
 
 - `PersonalData.Email` (signature-only)
 - `PaymentData.Metadata["immediately"]` set to `Y`/`true`/`1` to send `immediately=Y` (fast refund)
 
-## Limitations
+## CREDIT2CARD (A2C payout)
 
-`Credit` is not implemented yet.
+`client.Credit(req)` sends an A2C payout request to `/p2p-unq/` with `action=CREDIT2CARD`.
+
+Required:
+
+- `PaymentData.PaymentID` (order_id)
+- `PaymentData.Amount` (minor units, e.g. 100 -> 1.00)
+- `PaymentData.Currency`
+- `PaymentData.Description`
+- `PaymentMethod.Card.Token`
+
+Payer identity fields required by A2C (`payer_first_name`, `payer_last_name`, `payer_address`,
+`payer_country`, `payer_state`, `payer_city`, `payer_zip`) are taken from request data when provided,
+or filled with safe defaults.
+
+## A2C Status
+
+`client.Status(req)` supports A2C status checks over `/p2p-unq/` when
+`PaymentData.Metadata["platon_flow"] == "a2c"`.

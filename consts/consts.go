@@ -44,6 +44,9 @@ const (
 	// recurring by token, capture/refund, and status.
 	ApiPostUnqURL = baseUrl + "/post-unq/"
 
+	// ApiP2PUnqURL is the A2C Server-Server endpoint for payouts (CREDIT2CARD) and A2C status checks.
+	ApiP2PUnqURL = baseUrl + "/p2p-unq/"
+
 	// ApiVerifyURL is the legacy name for the IA Server-Server endpoint (`/post-unq/`).
 	// It is used both for card verification and card/token payments.
 	ApiVerifyURL = ApiPostUnqURL

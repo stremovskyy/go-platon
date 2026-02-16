@@ -9,15 +9,17 @@ A Go client library for the Platon.ua Payment Gateway API. This library provides
 
 ## Features
 
-- IA (Server-Server) card payments by PAN or `CARD_TOKEN`
+- IA (Server-Server) card payments by `CARD_TOKEN`
 - Card verification (Client-Server) with ready-to-use purchase URL (`client.Verification`)
 - IA Apple Pay / Google Pay (Server-Server)
-- GET_TRANS_STATUS request support
+- GET_TRANS_STATUS_BY_ORDER request support
 - CAPTURE (confirm HOLD) support
 - CREDITVOID (refund) support
+- A2C payouts via `CREDIT2CARD` (`/p2p-unq/`) by `card_token`
 - Split payouts (`split_rules`) for SALE/CAPTURE/CREDITVOID
 - GET_SUBMERCHANT support
 - URL-encoded requests (`application/x-www-form-urlencoded`)
+- Webhook callback parser for form payloads (`application/x-www-form-urlencoded`)
 - Structured logging and optional request/response recording
 
 ## Installation

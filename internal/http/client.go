@@ -92,7 +92,7 @@ func (c *Client) sendURLEncodedRequest(apiURL string, unsignedRequest *platon.Re
 	if err != nil {
 		return nil, c.logAndReturnError("cannot encode request", err, logger, requestID, nil)
 	}
-	logger.Debug("Request: %v", encodedForm)
+	logger.Debug("Request (%s):\n%s", FormURLEncodedContentType, PrettyPrintFormURLEncodedBody(encodedForm))
 
 	ctx := context.Background()
 	if c.options != nil && c.options.Timeout > 0 {
@@ -152,7 +152,7 @@ func (c *Client) sendURLEncodedRequest(apiURL string, unsignedRequest *platon.Re
 		return nil, c.logAndReturnError("cannot read response", err, logger, requestID, tags)
 	}
 
-	logger.Debug("Response: %v", string(raw))
+	logger.Debug("Response: %v", FormatBodyForDebug(resp.Header.Get("Content-Type"), raw))
 	logger.Debug("Response status: %v", resp.StatusCode)
 
 	if len(raw) == 0 {
@@ -233,7 +233,7 @@ func (c *Client) logAndReturnError(msg string, err error, logger *log.Logger, re
 
 // setHeaders sets common headers for all requests.
 func (c *Client) setHeaders(req *http.Request, requestID string) {
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Content-Type", FormURLEncodedContentType)
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "GO PLATON/"+consts.Version)
 	req.Header.Set("X-Request-ID", requestID)

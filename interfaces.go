@@ -45,6 +45,8 @@ type Platon interface {
 	Capture(request *Request, opts ...RunOption) (*platon.Response, error)
 	Refund(request *Request, opts ...RunOption) (*platon.Response, error)
 	Credit(request *Request, opts ...RunOption) (*platon.Response, error)
+	// Deprecated: Platon production callbacks use application/x-www-form-urlencoded.
+	// Use go_platon.ParseWebhookForm for callback parsing and signature verification.
 	ParseWebhookXML(data []byte) (*platon.Payment, error)
 	SetLogLevel(levelDebug log.Level)
 }

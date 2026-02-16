@@ -42,7 +42,7 @@ var orderAmountRe = regexp.MustCompile("^[0-9]+\\.[0-9]{2}$")
 
 // Request represents the main payment request structure
 type Request struct {
-	Action           string  `json:"action" validate:"omitempty,oneof=SALE GET_TRANS_STATUS APPLEPAY GOOGLEPAY CAPTURE CREDITVOID GET_SUBMERCHANT"`
+	Action           string  `json:"action" validate:"omitempty,oneof=SALE GET_TRANS_STATUS GET_TRANS_STATUS_BY_ORDER APPLEPAY GOOGLEPAY CAPTURE CREDITVOID CREDIT2CARD GET_SUBMERCHANT"`
 	ClientKey        string  `json:"client_key" validate:"required"`
 	Hash             string  `json:"hash,omitempty" validate:"omitempty,len=32"`
 	ChannelId        string  `json:"channel_id,omitempty" validate:"omitempty,max=255"`
@@ -106,10 +106,6 @@ type Request struct {
 	// Optional split distribution rules for SALE/CAPTURE/CREDITVOID.
 	SplitRules SplitRules `json:"split_rules,omitempty" validate:"omitempty"`
 
-	// CardHashPart is an internal helper for signature generation (e.g. GET_TRANS_STATUS).
-	// It must contain first6+last4 of the PAN and is never sent to Platon.
-	CardHashPart *string `json:"-"`
-
 	// HashEmail is an internal helper for signature generation for CAPTURE/CREDITVOID/GET_TRANS_STATUS.
 	// Per IA docs, it is not sent to Platon and may be empty if not specified in the initial payment.
 	HashEmail *string `json:"-"`
@@ -154,12 +150,27 @@ func (r *Request) SignAndPrepare() (*Request, error) {
 			return nil, fmt.Errorf("signature generation failed: %w", err)
 		}
 	case HashTypeGetTransStatus, HashTypeCapture, HashTypeCreditVoid:
-		sign, err = r.generateTransIDCardSignature()
+		sign, err = r.generateTransIDSignature()
+		if err != nil {
+			return nil, fmt.Errorf("signature generation failed: %w", err)
+		}
+	case HashTypeGetTransStatusByOrder:
+		sign, err = r.generateGetTransStatusByOrderSignature()
 		if err != nil {
 			return nil, fmt.Errorf("signature generation failed: %w", err)
 		}
 	case HashTypeGetSubmerchant:
 		sign, err = r.generateGetSubmerchantSignature()
+		if err != nil {
+			return nil, fmt.Errorf("signature generation failed: %w", err)
+		}
+	case HashTypeCredit2Card:
+		sign, err = r.generateCredit2CardSignature()
+		if err != nil {
+			return nil, fmt.Errorf("signature generation failed: %w", err)
+		}
+	case HashTypeCredit2CardToken:
+		sign, err = r.generateCredit2CardTokenSignature()
 		if err != nil {
 			return nil, fmt.Errorf("signature generation failed: %w", err)
 		}
@@ -347,8 +358,8 @@ func (r *Request) generateRecurringSignature() (string, error) {
 	return r.generateCardTokenSignature()
 }
 
-func (r *Request) generateTransIDCardSignature() (string, error) {
-	logger := log.NewLogger("TransIDCardSignature")
+func (r *Request) generateTransIDSignature() (string, error) {
+	logger := log.NewLogger("TransIDSignature")
 	logger.All("Generating signature for trans_id based request")
 
 	if r.Auth == nil || r.Auth.Secret == "" {
@@ -367,23 +378,29 @@ func (r *Request) generateTransIDCardSignature() (string, error) {
 		email = *r.PayerEmail
 	}
 
-	cardHashPart := ""
-	if r.CardHashPart != nil && *r.CardHashPart != "" {
-		cardHashPart = *r.CardHashPart
-	} else if r.CardNumber != nil && *r.CardNumber != "" {
-		cardNumber := *r.CardNumber
-		if len(cardNumber) < 10 {
-			return "", fmt.Errorf("card_number is too short")
-		}
-		cardHashPart = cardNumber[0:6] + cardNumber[len(cardNumber)-4:]
-	} else {
-		return "", fmt.Errorf("card hash part (first6+last4) is required for signature generation")
+	reversedEmail := reverseString(email)
+	concatenated := reversedEmail + r.Auth.Secret + *r.TransId
+
+	upperConcatenated := strings.ToUpper(concatenated)
+	hash := md5.Sum([]byte(upperConcatenated))
+	signature := hex.EncodeToString(hash[:])
+	logger.All("Generated MD5 signature: %s", signature)
+
+	return signature, nil
+}
+
+func (r *Request) generateGetTransStatusByOrderSignature() (string, error) {
+	logger := log.NewLogger("GetTransStatusByOrderSignature")
+	logger.All("Generating signature for GET_TRANS_STATUS_BY_ORDER request")
+
+	if r.Auth == nil || r.Auth.Secret == "" {
+		return "", fmt.Errorf("Auth secret is required for signature generation")
+	}
+	if r.OrderID == nil || *r.OrderID == "" {
+		return "", fmt.Errorf("order_id is required for signature generation")
 	}
 
-	reversedEmail := reverseString(email)
-	reversedCardHash := reverseString(cardHashPart)
-	concatenated := reversedEmail + r.Auth.Secret + *r.TransId + reversedCardHash
-
+	concatenated := *r.OrderID + r.Auth.Secret
 	upperConcatenated := strings.ToUpper(concatenated)
 	hash := md5.Sum([]byte(upperConcatenated))
 	signature := hex.EncodeToString(hash[:])
@@ -406,6 +423,54 @@ func (r *Request) generateGetSubmerchantSignature() (string, error) {
 	// Per IA docs:
 	// md5(strtoupper(client_pass + submerchant_id))
 	concatenated := r.Auth.Secret + *r.SubmerchantID
+	upperConcatenated := strings.ToUpper(concatenated)
+	hash := md5.Sum([]byte(upperConcatenated))
+	signature := hex.EncodeToString(hash[:])
+	logger.All("Generated MD5 signature: %s", signature)
+
+	return signature, nil
+}
+
+func (r *Request) generateCredit2CardSignature() (string, error) {
+	logger := log.NewLogger("Credit2CardSignature")
+	logger.All("Generating signature for CREDIT2CARD request by PAN")
+
+	if r.Auth == nil || r.Auth.Secret == "" {
+		return "", fmt.Errorf("Auth secret is required for signature generation")
+	}
+	if r.CardNumber == nil || *r.CardNumber == "" {
+		return "", fmt.Errorf("card_number is required for signature generation")
+	}
+
+	cardNumber := *r.CardNumber
+	if len(cardNumber) < 10 {
+		return "", fmt.Errorf("card_number is too short")
+	}
+	cardHashPart := cardNumber[0:6] + cardNumber[len(cardNumber)-4:]
+
+	reversedCardHash := reverseString(cardHashPart)
+	concatenated := r.Auth.Secret + reversedCardHash
+	upperConcatenated := strings.ToUpper(concatenated)
+	hash := md5.Sum([]byte(upperConcatenated))
+	signature := hex.EncodeToString(hash[:])
+	logger.All("Generated MD5 signature: %s", signature)
+
+	return signature, nil
+}
+
+func (r *Request) generateCredit2CardTokenSignature() (string, error) {
+	logger := log.NewLogger("Credit2CardTokenSignature")
+	logger.All("Generating signature for CREDIT2CARD request by card token")
+
+	if r.Auth == nil || r.Auth.Secret == "" {
+		return "", fmt.Errorf("Auth secret is required for signature generation")
+	}
+	if r.CardToken == nil || *r.CardToken == "" {
+		return "", fmt.Errorf("card_token is required for signature generation")
+	}
+
+	reversedToken := reverseString(*r.CardToken)
+	concatenated := r.Auth.Secret + reversedToken
 	upperConcatenated := strings.ToUpper(concatenated)
 	hash := md5.Sum([]byte(upperConcatenated))
 	signature := hex.EncodeToString(hash[:])
@@ -816,6 +881,14 @@ func (r *Request) validateByHashType() error {
 			return fmt.Errorf("get_trans_status: trans_id is required")
 		}
 
+	case HashTypeGetTransStatusByOrder:
+		if r.Action != ActionCodeGetTransStatusByOrder.String() {
+			return fmt.Errorf("get_trans_status_by_order: action must be %s", ActionCodeGetTransStatusByOrder.String())
+		}
+		if r.OrderID == nil || strings.TrimSpace(*r.OrderID) == "" {
+			return fmt.Errorf("get_trans_status_by_order: order_id is required")
+		}
+
 	case HashTypeCapture:
 		if r.Action != ActionCodeCAPTURE.String() {
 			return fmt.Errorf("capture: action must be %s", ActionCodeCAPTURE.String())
@@ -854,6 +927,106 @@ func (r *Request) validateByHashType() error {
 		}
 		if err := validateSplitRules(r.SplitRules, r.Amount, "creditvoid"); err != nil {
 			return err
+		}
+
+	case HashTypeCredit2Card:
+		if r.Action != ActionCodeCREDIT2CARD.String() {
+			return fmt.Errorf("credit2card: action must be %s", ActionCodeCREDIT2CARD.String())
+		}
+		if r.CardNumber == nil || *r.CardNumber == "" {
+			return fmt.Errorf("credit2card: card_number is required")
+		}
+		if r.OrderID == nil || *r.OrderID == "" {
+			return fmt.Errorf("credit2card: order_id is required")
+		}
+		if r.Amount == "" {
+			return fmt.Errorf("credit2card: amount is required")
+		}
+		if !orderAmountRe.MatchString(r.Amount) {
+			return fmt.Errorf("credit2card: amount must match %q (got %q)", orderAmountRe.String(), r.Amount)
+		}
+		if v, err := parseOrderAmountMinorUnits(r.Amount); err != nil || v <= 0 {
+			return fmt.Errorf("credit2card: amount must be > 0 (got %q)", r.Amount)
+		}
+		if r.OrderCurrency == "" {
+			return fmt.Errorf("credit2card: order_currency is required")
+		}
+		if r.OrderDescription == nil || strings.TrimSpace(*r.OrderDescription) == "" {
+			return fmt.Errorf("credit2card: order_description is required")
+		}
+		if r.PayerFirstName == nil || strings.TrimSpace(*r.PayerFirstName) == "" {
+			return fmt.Errorf("credit2card: payer_first_name is required")
+		}
+		if r.PayerLastName == nil || strings.TrimSpace(*r.PayerLastName) == "" {
+			return fmt.Errorf("credit2card: payer_last_name is required")
+		}
+		if r.PayerAddress == nil || strings.TrimSpace(*r.PayerAddress) == "" {
+			return fmt.Errorf("credit2card: payer_address is required")
+		}
+		if r.PayerCountry == nil || strings.TrimSpace(*r.PayerCountry) == "" {
+			return fmt.Errorf("credit2card: payer_country is required")
+		}
+		if r.PayerState == nil || strings.TrimSpace(*r.PayerState) == "" {
+			return fmt.Errorf("credit2card: payer_state is required")
+		}
+		if r.PayerCity == nil || strings.TrimSpace(*r.PayerCity) == "" {
+			return fmt.Errorf("credit2card: payer_city is required")
+		}
+		if r.PayerZip == nil || strings.TrimSpace(*r.PayerZip) == "" {
+			return fmt.Errorf("credit2card: payer_zip is required")
+		}
+		if len(r.SplitRules) > 0 {
+			return fmt.Errorf("credit2card: split_rules are not allowed")
+		}
+
+	case HashTypeCredit2CardToken:
+		if r.Action != ActionCodeCREDIT2CARD.String() {
+			return fmt.Errorf("credit2card_token: action must be %s", ActionCodeCREDIT2CARD.String())
+		}
+		if r.CardToken == nil || *r.CardToken == "" {
+			return fmt.Errorf("credit2card_token: card_token is required")
+		}
+		if r.OrderID == nil || *r.OrderID == "" {
+			return fmt.Errorf("credit2card_token: order_id is required")
+		}
+		if r.Amount == "" {
+			return fmt.Errorf("credit2card_token: amount is required")
+		}
+		if !orderAmountRe.MatchString(r.Amount) {
+			return fmt.Errorf("credit2card_token: amount must match %q (got %q)", orderAmountRe.String(), r.Amount)
+		}
+		if v, err := parseOrderAmountMinorUnits(r.Amount); err != nil || v <= 0 {
+			return fmt.Errorf("credit2card_token: amount must be > 0 (got %q)", r.Amount)
+		}
+		if r.OrderCurrency == "" {
+			return fmt.Errorf("credit2card_token: order_currency is required")
+		}
+		if r.OrderDescription == nil || strings.TrimSpace(*r.OrderDescription) == "" {
+			return fmt.Errorf("credit2card_token: order_description is required")
+		}
+		if r.PayerFirstName == nil || strings.TrimSpace(*r.PayerFirstName) == "" {
+			return fmt.Errorf("credit2card_token: payer_first_name is required")
+		}
+		if r.PayerLastName == nil || strings.TrimSpace(*r.PayerLastName) == "" {
+			return fmt.Errorf("credit2card_token: payer_last_name is required")
+		}
+		if r.PayerAddress == nil || strings.TrimSpace(*r.PayerAddress) == "" {
+			return fmt.Errorf("credit2card_token: payer_address is required")
+		}
+		if r.PayerCountry == nil || strings.TrimSpace(*r.PayerCountry) == "" {
+			return fmt.Errorf("credit2card_token: payer_country is required")
+		}
+		if r.PayerState == nil || strings.TrimSpace(*r.PayerState) == "" {
+			return fmt.Errorf("credit2card_token: payer_state is required")
+		}
+		if r.PayerCity == nil || strings.TrimSpace(*r.PayerCity) == "" {
+			return fmt.Errorf("credit2card_token: payer_city is required")
+		}
+		if r.PayerZip == nil || strings.TrimSpace(*r.PayerZip) == "" {
+			return fmt.Errorf("credit2card_token: payer_zip is required")
+		}
+		if len(r.SplitRules) > 0 {
+			return fmt.Errorf("credit2card_token: split_rules are not allowed")
 		}
 
 	case HashTypeGetSubmerchant:

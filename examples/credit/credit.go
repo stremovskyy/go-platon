@@ -46,11 +46,26 @@ func main() {
 
 	req := &go_platon.Request{
 		Merchant: merchant,
+		PaymentData: &go_platon.PaymentData{
+			PaymentID:   ref("credit-order-1"),
+			Amount:      100, // 1.00 UAH
+			Currency:    "UAH",
+			Description: "A2C payout example",
+		},
+		PaymentMethod: &go_platon.PaymentMethod{
+			Card: &go_platon.Card{
+				Token: ref(cfg.CardToken),
+			},
+		},
 	}
 
 	_, err := client.Credit(req)
 	if err != nil {
-		fmt.Println("credit is not implemented yet:", err)
+		fmt.Println("credit error:", err)
 		return
 	}
+
+	fmt.Println("credit request sent")
 }
+
+func ref(s string) *string { return &s }

@@ -31,8 +31,6 @@ type Config struct {
 	CardMonth  string
 	CardYear   string
 	CardCVV    string
-
-	ValidationSuccess string
 }
 
 var defaultEnvPaths = []string{
@@ -117,10 +115,6 @@ func Load() (*Config, error) {
 	if cfg.CardCVV, err = requireString("PLATON_CARD_CVV"); err != nil {
 		return nil, err
 	}
-	if cfg.ValidationSuccess, err = requireString("PLATON_VALIDATION_SUCCESS"); err != nil {
-		return nil, err
-	}
-
 	return cfg, nil
 }
 

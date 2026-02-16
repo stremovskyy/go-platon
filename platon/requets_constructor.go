@@ -249,6 +249,51 @@ func (r *Request) WithPayerLastName(lastName *string) *Request {
 	return r
 }
 
+func (r *Request) WithPayerAddress(address *string) *Request {
+	if r == nil {
+		return nil
+	}
+
+	r.PayerAddress = address
+	return r
+}
+
+func (r *Request) WithPayerCountry(country *string) *Request {
+	if r == nil {
+		return nil
+	}
+
+	r.PayerCountry = country
+	return r
+}
+
+func (r *Request) WithPayerState(state *string) *Request {
+	if r == nil {
+		return nil
+	}
+
+	r.PayerState = state
+	return r
+}
+
+func (r *Request) WithPayerCity(city *string) *Request {
+	if r == nil {
+		return nil
+	}
+
+	r.PayerCity = city
+	return r
+}
+
+func (r *Request) WithPayerZip(zip *string) *Request {
+	if r == nil {
+		return nil
+	}
+
+	r.PayerZip = zip
+	return r
+}
+
 func (r *Request) WithApplePayData(data *string) *Request {
 	if r == nil {
 		return nil
@@ -429,17 +474,6 @@ func (r *Request) WithHashEmail(email *string) *Request {
 	}
 
 	r.HashEmail = email
-	return r
-}
-
-// WithCardHashPart sets the first6+last4 part used for signature generation for CAPTURE/CREDITVOID/GET_TRANS_STATUS.
-// This value is not sent to Platon (json:"-").
-func (r *Request) WithCardHashPart(cardHashPart *string) *Request {
-	if r == nil {
-		return nil
-	}
-
-	r.CardHashPart = cardHashPart
 	return r
 }
 

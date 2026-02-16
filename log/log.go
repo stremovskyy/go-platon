@@ -112,5 +112,5 @@ func (l *Logger) None(format string, a ...interface{}) {
 }
 
 func (l *Logger) All(format string, a ...interface{}) {
-	l.log(LevelAll, format, a...)
+	l.log(LevelDebug, format, a...)
 }

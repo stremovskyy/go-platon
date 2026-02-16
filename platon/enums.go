@@ -83,13 +83,15 @@ func (a ActionCode) String() string {
 }
 
 const (
-	ActionCodeSALE           ActionCode = "SALE"
-	ActionCodeGetTransStatus ActionCode = "GET_TRANS_STATUS"
-	ActionCodeAPPLEPAY       ActionCode = "APPLEPAY"
-	ActionCodeGOOGLEPAY      ActionCode = "GOOGLEPAY"
-	ActionCodeCAPTURE        ActionCode = "CAPTURE"
-	ActionCodeCREDITVOID     ActionCode = "CREDITVOID"
-	ActionCodeGetSubmerchant ActionCode = "GET_SUBMERCHANT"
+	ActionCodeSALE                  ActionCode = "SALE"
+	ActionCodeGetTransStatus        ActionCode = "GET_TRANS_STATUS"
+	ActionCodeGetTransStatusByOrder ActionCode = "GET_TRANS_STATUS_BY_ORDER"
+	ActionCodeAPPLEPAY              ActionCode = "APPLEPAY"
+	ActionCodeGOOGLEPAY             ActionCode = "GOOGLEPAY"
+	ActionCodeCAPTURE               ActionCode = "CAPTURE"
+	ActionCodeCREDITVOID            ActionCode = "CREDITVOID"
+	ActionCodeCREDIT2CARD           ActionCode = "CREDIT2CARD"
+	ActionCodeGetSubmerchant        ActionCode = "GET_SUBMERCHANT"
 )
 
 type HashType string
@@ -120,6 +122,9 @@ const (
 	// HashTypeGetTransStatus is used for the GET_TRANS_STATUS request.
 	HashTypeGetTransStatus HashType = "get_trans_status"
 
+	// HashTypeGetTransStatusByOrder is used for the GET_TRANS_STATUS_BY_ORDER request.
+	HashTypeGetTransStatusByOrder HashType = "get_trans_status_by_order"
+
 	// HashTypeCapture is used for CAPTURE (confirm HOLD).
 	HashTypeCapture HashType = "capture"
 
@@ -128,4 +133,10 @@ const (
 
 	// HashTypeGetSubmerchant is used for GET_SUBMERCHANT requests.
 	HashTypeGetSubmerchant HashType = "get_submerchant"
+
+	// HashTypeCredit2Card is used for A2C payouts by PAN (CREDIT2CARD).
+	HashTypeCredit2Card HashType = "credit2card"
+
+	// HashTypeCredit2CardToken is used for A2C payouts by card_token (CREDIT2CARD).
+	HashTypeCredit2CardToken HashType = "credit2card_token"
 )

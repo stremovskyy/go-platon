@@ -34,7 +34,6 @@ import (
 	"regexp"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/stremovskyy/go-platon/consts"
 	internalhttp "github.com/stremovskyy/go-platon/internal/http"
@@ -48,6 +47,19 @@ type client struct {
 }
 
 var _ Platon = (*client)(nil)
+
+const (
+	platonMetaFlow = "platon_flow"
+	platonFlowA2C  = "a2c"
+
+	defaultA2CFirstName = "Payer"
+	defaultA2CLastName  = "Cardholder"
+	defaultA2CAddress   = "N/A"
+	defaultA2CCountry   = "UA"
+	defaultA2CState     = "UA"
+	defaultA2CCity      = "Kyiv"
+	defaultA2CZip       = "00000"
+)
 
 func (c *client) SetLogLevel(levelDebug log.Level) {
 	log.SetLevel(levelDebug)
@@ -91,34 +103,30 @@ func (c *client) Status(request *Request, runOpts ...RunOption) (*platon.Respons
 
 	opts := collectRunOptions(runOpts)
 
-	transID := request.GetPlatonTransID()
-	if transID == nil || *transID == "" {
-		return nil, fmt.Errorf("status: trans_id is required (set PaymentData.PlatonTransID or PaymentData.PlatonPaymentID)")
+	orderID := request.GetPaymentID()
+	if orderID == nil || strings.TrimSpace(*orderID) == "" {
+		return nil, fmt.Errorf("status: order_id is required (set PaymentData.PaymentID)")
 	}
 
-	statusRequest := platon.NewRequest(platon.ActionCodeGetTransStatus).
+	isA2C := isA2CStatusRequest(request)
+	statusHashType := platon.HashTypeGetTransStatusByOrder
+	statusURL := consts.ApiGetTransStatus
+	if isA2C {
+		statusURL = consts.ApiP2PUnqURL
+	}
+
+	statusRequest := platon.NewRequest(platon.ActionCodeGetTransStatusByOrder).
 		WithAuth(request.GetAuth()).
 		WithClientKey(request.GetMerchantKey()).
-		WithTransID(transID).
-		WithHashEmail(request.GetPayerEmail()).
-		SignForAction(platon.HashTypeGetTransStatus)
-
-	pan := request.GetCardNumber()
-	if pan == nil || *pan == "" {
-		return nil, fmt.Errorf("status: card_number is required to build signature (only first 6 and last 4 are used)")
-	}
-	cardHashPart, err := cardHashPartFromPAN(*pan)
-	if err != nil {
-		return nil, fmt.Errorf("status: cannot derive card hash part from card_number: %w", err)
-	}
-	statusRequest.WithCardHashPart(&cardHashPart)
+		WithOrderID(orderID).
+		SignForAction(statusHashType)
 
 	if opts.isDryRun() {
-		opts.handleDryRun(consts.ApiGetTransStatus, statusRequest)
+		opts.handleDryRun(statusURL, statusRequest)
 		return nil, nil
 	}
 
-	return c.platonClient.Api(statusRequest, consts.ApiGetTransStatus)
+	return c.platonClient.Api(statusRequest, statusURL)
 }
 
 func (c *client) SubmerchantAvailableForSplit(request *Request, runOpts ...RunOption) (bool, error) {
@@ -300,22 +308,7 @@ func (c *client) buildIAPaymentRequest(request *Request, hold bool) (*platon.Req
 		return apiRequest, consts.ApiPostUnqURL, nil
 	}
 
-	// Classic PAN payment.
-	if pan := request.GetCardNumber(); pan != nil && *pan != "" {
-		apiRequest := common(platon.ActionCodeSALE).
-			WithReqToken(false).
-			WithRecurringInitFlag(false).
-			WithCardNumber(pan).
-			WithCardExpMonth(request.GetCardExpMonth()).
-			WithCardExpYear(request.GetCardExpYear()).
-			WithCardCvv2(request.GetCardCvv2()).
-			WithSplitRules(splitRules).
-			SignForAction(platon.HashTypeCardPayment)
-
-		return apiRequest, consts.ApiPostUnqURL, nil
-	}
-
-	return nil, "", fmt.Errorf("payment: unsupported payment method (expected card PAN, CARD_TOKEN, Apple Pay, or Google Pay data)")
+	return nil, "", fmt.Errorf("payment: unsupported payment method (expected CARD_TOKEN, Apple Pay, or Google Pay data)")
 }
 
 func (c *client) Capture(request *Request, runOpts ...RunOption) (*platon.Response, error) {
@@ -343,15 +336,6 @@ func (c *client) Capture(request *Request, runOpts ...RunOption) (*platon.Respon
 		return nil, fmt.Errorf("capture: invalid split rules: %w", err)
 	}
 
-	pan := request.GetCardNumber()
-	if pan == nil || *pan == "" {
-		return nil, fmt.Errorf("capture: card_number is required to build signature (only first 6 and last 4 are used)")
-	}
-	cardHashPart, err := cardHashPartFromPAN(*pan)
-	if err != nil {
-		return nil, fmt.Errorf("capture: cannot derive card hash part from card_number: %w", err)
-	}
-
 	apiRequest := platon.NewRequest(platon.ActionCodeCAPTURE).
 		WithAuth(request.GetAuth()).
 		WithClientKey(request.GetMerchantKey()).
@@ -359,7 +343,6 @@ func (c *client) Capture(request *Request, runOpts ...RunOption) (*platon.Respon
 		WithAmountMinorUnits(request.PaymentData.Amount).
 		WithSplitRules(splitRules).
 		WithHashEmail(request.GetPayerEmail()).
-		WithCardHashPart(&cardHashPart).
 		SignForAction(platon.HashTypeCapture)
 
 	if opts.isDryRun() {
@@ -395,23 +378,13 @@ func (c *client) Refund(request *Request, runOpts ...RunOption) (*platon.Respons
 		return nil, fmt.Errorf("refund: invalid split rules: %w", err)
 	}
 
-	pan := request.GetCardNumber()
-	if pan == nil || *pan == "" {
-		return nil, fmt.Errorf("refund: card_number is required to build signature (only first 6 and last 4 are used)")
-	}
-	cardHashPart, err := cardHashPartFromPAN(*pan)
-	if err != nil {
-		return nil, fmt.Errorf("refund: cannot derive card hash part from card_number: %w", err)
-	}
-
 	apiRequest := platon.NewRequest(platon.ActionCodeCREDITVOID).
 		WithAuth(request.GetAuth()).
 		WithClientKey(request.GetMerchantKey()).
 		WithTransID(transID).
 		WithAmountMinorUnits(request.PaymentData.Amount).
 		WithSplitRules(splitRules).
-		WithHashEmail(request.GetPayerEmail()).
-		WithCardHashPart(&cardHashPart)
+		WithHashEmail(request.GetPayerEmail())
 
 	// Optional fast refund flag. If user sets PaymentData.Metadata["immediately"] to "Y"/"true"/"1",
 	// send `immediately=Y` as per IA docs.
@@ -438,52 +411,229 @@ func (c *client) Credit(request *Request, runOpts ...RunOption) (*platon.Respons
 	}
 
 	opts := collectRunOptions(runOpts)
+	if request.GetMerchantKey() == "" {
+		return nil, fmt.Errorf("credit: merchant client_key is required")
+	}
+	if request.PaymentData == nil {
+		return nil, fmt.Errorf("credit: PaymentData is nil")
+	}
+	if request.GetPaymentID() == nil || *request.GetPaymentID() == "" {
+		return nil, fmt.Errorf("credit: order_id (PaymentData.PaymentID) is required")
+	}
+	if request.PaymentData.Amount <= 0 {
+		return nil, fmt.Errorf("credit: PaymentData.Amount (minor units) must be > 0")
+	}
+	if request.GetCurrency() == "" {
+		return nil, fmt.Errorf("credit: order_currency is required")
+	}
+	if request.GetDescription() == "" {
+		return nil, fmt.Errorf("credit: order_description is required")
+	}
+
+	if splitRules, err := request.GetSplitRules(); err != nil {
+		return nil, fmt.Errorf("credit: invalid split rules: %w", err)
+	} else if len(splitRules) > 0 {
+		return nil, fmt.Errorf("credit: split rules are not supported for CREDIT2CARD")
+	}
+
+	a2cPayer := resolveA2CPayerData(request)
+	apiRequest := platon.NewRequest(platon.ActionCodeCREDIT2CARD).
+		WithAuth(request.GetAuth()).
+		WithClientKey(request.GetMerchantKey()).
+		WithOrderID(request.GetPaymentID()).
+		WithAmountMinorUnits(request.PaymentData.Amount).
+		ForCurrency(request.GetCurrency()).
+		WithDescription(request.GetDescription()).
+		WithPayerFirstName(a2cPayer.FirstName).
+		WithPayerLastName(a2cPayer.LastName).
+		WithPayerAddress(a2cPayer.Address).
+		WithPayerCountry(a2cPayer.Country).
+		WithPayerState(a2cPayer.State).
+		WithPayerCity(a2cPayer.City).
+		WithPayerZip(a2cPayer.Zip).
+		WithPayerEmail(request.GetPayerEmail()).
+		WithPayerPhone(request.GetPayerPhone())
+
+	if token := request.GetCardToken(); token != nil && *token != "" {
+		apiRequest.WithCardToken(token).SignForAction(platon.HashTypeCredit2CardToken)
+	} else {
+		return nil, fmt.Errorf("credit: card_token is required")
+	}
+
 	if opts.isDryRun() {
-		opts.handleDryRun(consts.ApiPostUnqURL, request)
+		opts.handleDryRun(consts.ApiP2PUnqURL, apiRequest)
 		return nil, nil
 	}
 
-	return nil, fmt.Errorf("credit: %w", platon.ErrNotImplemented)
+	return c.platonClient.Api(apiRequest, consts.ApiP2PUnqURL)
 }
 
+// ParseWebhookXML parses legacy XML webhook payload.
+//
+// Deprecated: Platon production callbacks use application/x-www-form-urlencoded.
+// Use go_platon.ParseWebhookForm for callback parsing and signature verification.
 func (c *client) ParseWebhookXML(data []byte) (*platon.Payment, error) {
 	return platon.ParsePaymentXML(data)
 }
 
-func cardHashPartFromPAN(pan string) (string, error) {
-	digits := digitsOnly(pan)
-	if len(digits) < 10 {
-		return "", fmt.Errorf("card_number must contain at least 10 digits (got %q)", pan)
+func isA2CStatusRequest(request *Request) bool {
+	if request == nil {
+		return false
 	}
-	return digits[:6] + digits[len(digits)-4:], nil
-}
 
-func digitsOnly(s string) string {
-	var b strings.Builder
-	b.Grow(len(s))
-	for _, r := range s {
-		if unicode.IsDigit(r) {
-			b.WriteRune(r)
+	metadata := request.GetMetadata()
+	if metadata != nil {
+		if flow, ok := metadata[platonMetaFlow]; ok && strings.EqualFold(strings.TrimSpace(flow), platonFlowA2C) {
+			return true
 		}
 	}
-	return b.String()
+
+	return false
+}
+
+type a2cPayerData struct {
+	FirstName *string
+	LastName  *string
+	Address   *string
+	Country   *string
+	State     *string
+	City      *string
+	Zip       *string
+}
+
+func resolveA2CPayerData(request *Request) a2cPayerData {
+	metadata := request.GetMetadata()
+
+	firstName := firstNonEmptyPointer(
+		pointerStringFromPersonalData(request, func(data *PersonalData) *string { return data.FirstName }),
+		stringPointerFromMetadata(metadata, "payer_first_name"),
+		stringRef(defaultA2CFirstName),
+	)
+	lastName := firstNonEmptyPointer(
+		pointerStringFromPersonalData(request, func(data *PersonalData) *string { return data.LastName }),
+		stringPointerFromMetadata(metadata, "payer_last_name"),
+		stringRef(defaultA2CLastName),
+	)
+	address := firstNonEmptyPointer(
+		stringPointerFromMetadata(metadata, "payer_address"),
+		stringRef(defaultA2CAddress),
+	)
+	country := normalizeTwoLetterValue(firstNonEmptyPointer(
+		stringPointerFromMetadata(metadata, "payer_country"),
+		stringRef(defaultA2CCountry),
+	), defaultA2CCountry)
+	state := normalizeTwoLetterValue(firstNonEmptyPointer(
+		stringPointerFromMetadata(metadata, "payer_state"),
+		stringPointerFromMetadata(metadata, "payer_country"),
+		stringRef(defaultA2CState),
+	), defaultA2CState)
+	city := firstNonEmptyPointer(
+		stringPointerFromMetadata(metadata, "payer_city"),
+		stringRef(defaultA2CCity),
+	)
+	zip := firstNonEmptyPointer(
+		stringPointerFromMetadata(metadata, "payer_zip"),
+		stringRef(defaultA2CZip),
+	)
+
+	return a2cPayerData{
+		FirstName: firstName,
+		LastName:  lastName,
+		Address:   address,
+		Country:   country,
+		State:     state,
+		City:      city,
+		Zip:       zip,
+	}
+}
+
+func pointerStringFromPersonalData(request *Request, getter func(*PersonalData) *string) *string {
+	if request == nil || request.PersonalData == nil || getter == nil {
+		return nil
+	}
+
+	return getter(request.PersonalData)
+}
+
+func stringPointerFromMetadata(metadata map[string]string, key string) *string {
+	if metadata == nil {
+		return nil
+	}
+	value, ok := metadata[key]
+	if !ok {
+		return nil
+	}
+
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return nil
+	}
+
+	return &trimmed
+}
+
+func firstNonEmptyPointer(values ...*string) *string {
+	for _, value := range values {
+		if value == nil {
+			continue
+		}
+		trimmed := strings.TrimSpace(*value)
+		if trimmed == "" {
+			continue
+		}
+		return &trimmed
+	}
+	return nil
+}
+
+func normalizeTwoLetterValue(value *string, fallback string) *string {
+	if value == nil {
+		return &fallback
+	}
+
+	normalized := strings.ToUpper(strings.TrimSpace(*value))
+	if normalized == "" {
+		return &fallback
+	}
+	if len(normalized) > 2 {
+		normalized = normalized[:2]
+	}
+	return &normalized
+}
+
+func stringRef(value string) *string {
+	return &value
 }
 
 func resolveClientServerVerificationURL(form *platon.ClientServerVerificationForm) (*url.URL, error) {
+	logger := log.NewLogger("Platon Verification: ")
+
 	if form == nil {
-		return nil, fmt.Errorf("verification form is nil")
+		err := fmt.Errorf("verification form is nil")
+		logger.Error("%v", err)
+		return nil, err
 	}
 
 	values := url.Values{}
 	for key, value := range form.Fields {
 		values.Set(key, value)
 	}
+	encodedForm := values.Encode()
+	logger.Debug("Endpoint: %s", form.Endpoint)
+	logger.Debug("Fields count: %d", len(form.Fields))
+	logger.Debug(
+		"Request (%s):\n%s",
+		internalhttp.FormURLEncodedContentType,
+		internalhttp.PrettyPrintFormURLEncodedBody(encodedForm),
+	)
 
-	req, err := http.NewRequest(http.MethodPost, form.Endpoint, strings.NewReader(values.Encode()))
+	req, err := http.NewRequest(http.MethodPost, form.Endpoint, strings.NewReader(encodedForm))
 	if err != nil {
-		return nil, fmt.Errorf("cannot build verification request: %w", err)
+		err = fmt.Errorf("cannot build verification request: %w", err)
+		logger.Error("%v", err)
+		return nil, err
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.Header.Set("Content-Type", internalhttp.FormURLEncodedContentType)
 
 	httpClient := &http.Client{
 		Timeout: 30 * time.Second,
@@ -494,17 +644,35 @@ func resolveClientServerVerificationURL(form *platon.ClientServerVerificationFor
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("verification request failed: %w", err)
+		err = fmt.Errorf("verification request failed: %w", err)
+		logger.Error("%v", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
-
-	if location := strings.TrimSpace(resp.Header.Get("Location")); location != "" {
-		return parsePurchaseURL(location)
-	}
+	logger.Debug("Response status: %d", resp.StatusCode)
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
-		return nil, fmt.Errorf("cannot read verification response body: %w", err)
+		err = fmt.Errorf("cannot read verification response body: %w", err)
+		logger.Error("%v", err)
+		return nil, err
+	}
+	logger.Debug("Response body size: %d bytes", len(body))
+	if len(body) == 0 {
+		logger.Debug("Response: <empty>")
+	} else if internalhttp.IsFormURLEncodedContentType(resp.Header.Get("Content-Type")) {
+		logger.Debug(
+			"Response (%s):\n%s",
+			internalhttp.FormURLEncodedContentType,
+			truncateVerificationBodyForLog([]byte(internalhttp.PrettyPrintFormURLEncodedBody(string(body)))),
+		)
+	} else {
+		logger.Debug("Response: %s", truncateVerificationBodyForLog(body))
+	}
+
+	if location := strings.TrimSpace(resp.Header.Get("Location")); location != "" {
+		logger.Debug("Response location: %s", location)
+		return parsePurchaseURL(location)
 	}
 
 	absRe := regexp.MustCompile(`https://secure\.platononline\.com/payment/purchase\?token=[A-Za-z0-9]+`)
@@ -522,7 +690,16 @@ func resolveClientServerVerificationURL(form *platon.ClientServerVerificationFor
 		errMsg += "; gateway returned error page (check merchant key, secret/signature, and callback URL)"
 	}
 
+	logger.Error("%s", errMsg)
 	return nil, errors.New(errMsg)
+}
+
+func truncateVerificationBodyForLog(raw []byte) string {
+	const max = 512
+	if len(raw) <= max {
+		return string(raw)
+	}
+	return string(raw[:max]) + "...(truncated)"
 }
 
 func parsePurchaseURL(raw string) (*url.URL, error) {

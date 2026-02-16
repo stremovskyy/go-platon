@@ -214,7 +214,6 @@ func TestSignAndPrepare_GetTransStatusSignature(t *testing.T) {
 
 	email := "payer@example.com"
 	transID := "632508054"
-	cardHashPart := "4111111111" // first6+last4
 
 	req := NewRequest(ActionCodeGetTransStatus).
 		WithAuth(auth).
@@ -222,14 +221,13 @@ func TestSignAndPrepare_GetTransStatusSignature(t *testing.T) {
 		WithTransID(&transID).
 		WithPayerEmail(&email).
 		SignForAction(HashTypeGetTransStatus)
-	req.CardHashPart = &cardHashPart
 
 	signed, err := req.SignAndPrepare()
 	if err != nil {
 		t.Fatalf("SignAndPrepare() error: %v", err)
 	}
 
-	const want = "77a4785689636b4d3875ec7acf47d5e2"
+	const want = "ef374c28b6398c097e0b3d6230deebd6"
 	if signed.Hash != want {
 		t.Fatalf("hash mismatch: want %s, got %s", want, signed.Hash)
 	}
@@ -240,7 +238,6 @@ func TestSignAndPrepare_CaptureSignatureAndMap(t *testing.T) {
 
 	email := "payer@example.com"
 	transID := "632508054"
-	cardHashPart := "4111111111" // first6+last4
 
 	req := NewRequest(ActionCodeCAPTURE).
 		WithAuth(auth).
@@ -248,15 +245,14 @@ func TestSignAndPrepare_CaptureSignatureAndMap(t *testing.T) {
 		WithTransID(&transID).
 		WithAmount("1.00").
 		WithHashEmail(&email).
-		SignForAction(HashTypeCapture).
-		WithCardHashPart(&cardHashPart)
+		SignForAction(HashTypeCapture)
 
 	signed, err := req.SignAndPrepare()
 	if err != nil {
 		t.Fatalf("SignAndPrepare() error: %v", err)
 	}
 
-	const want = "77a4785689636b4d3875ec7acf47d5e2"
+	const want = "ef374c28b6398c097e0b3d6230deebd6"
 	if signed.Hash != want {
 		t.Fatalf("hash mismatch: want %s, got %s", want, signed.Hash)
 	}
@@ -265,9 +261,6 @@ func TestSignAndPrepare_CaptureSignatureAndMap(t *testing.T) {
 	m := signed.ToMap()
 	if _, ok := m["hash_email"]; ok {
 		t.Fatalf("unexpected serialized key: hash_email")
-	}
-	if _, ok := m["card_hash_part"]; ok {
-		t.Fatalf("unexpected serialized key: card_hash_part")
 	}
 	if _, ok := m["amount"]; !ok {
 		t.Fatalf("expected serialized key: amount")
@@ -282,7 +275,6 @@ func TestSignAndPrepare_CreditVoidSignature(t *testing.T) {
 
 	email := "payer@example.com"
 	transID := "632508054"
-	cardHashPart := "4111111111" // first6+last4
 
 	req := NewRequest(ActionCodeCREDITVOID).
 		WithAuth(auth).
@@ -290,15 +282,120 @@ func TestSignAndPrepare_CreditVoidSignature(t *testing.T) {
 		WithTransID(&transID).
 		WithAmount("1.00").
 		WithHashEmail(&email).
-		SignForAction(HashTypeCreditVoid).
-		WithCardHashPart(&cardHashPart)
+		SignForAction(HashTypeCreditVoid)
 
 	signed, err := req.SignAndPrepare()
 	if err != nil {
 		t.Fatalf("SignAndPrepare() error: %v", err)
 	}
 
-	const want = "77a4785689636b4d3875ec7acf47d5e2"
+	const want = "ef374c28b6398c097e0b3d6230deebd6"
+	if signed.Hash != want {
+		t.Fatalf("hash mismatch: want %s, got %s", want, signed.Hash)
+	}
+}
+
+func TestSignAndPrepare_Credit2CardSignature(t *testing.T) {
+	auth := &Auth{Key: "k", Secret: "secret123"}
+
+	orderID := "order-a2c-pan"
+	desc := "a2c payout"
+	pan := "4111111111111111"
+	firstName := "John"
+	lastName := "Doe"
+	address := "Main st 1"
+	country := "UA"
+	state := "UA"
+	city := "Kyiv"
+	zip := "01001"
+
+	req := NewRequest(ActionCodeCREDIT2CARD).
+		WithAuth(auth).
+		WithClientKey("clientKey").
+		WithOrderID(&orderID).
+		WithAmount("1.00").
+		ForCurrency(currency.UAH).
+		WithDescription(desc).
+		WithCardNumber(&pan).
+		WithPayerFirstName(&firstName).
+		WithPayerLastName(&lastName).
+		WithPayerAddress(&address).
+		WithPayerCountry(&country).
+		WithPayerState(&state).
+		WithPayerCity(&city).
+		WithPayerZip(&zip).
+		SignForAction(HashTypeCredit2Card)
+
+	signed, err := req.SignAndPrepare()
+	if err != nil {
+		t.Fatalf("SignAndPrepare() error: %v", err)
+	}
+
+	const want = "cbe775dd3121bd75d6636a42a3cf65cc"
+	if signed.Hash != want {
+		t.Fatalf("hash mismatch: want %s, got %s", want, signed.Hash)
+	}
+}
+
+func TestSignAndPrepare_Credit2CardTokenSignature(t *testing.T) {
+	auth := &Auth{Key: "k", Secret: "secret123"}
+
+	orderID := "order-a2c-token"
+	desc := "a2c payout"
+	token := "TOKEN123"
+	firstName := "John"
+	lastName := "Doe"
+	address := "Main st 1"
+	country := "UA"
+	state := "UA"
+	city := "Kyiv"
+	zip := "01001"
+
+	req := NewRequest(ActionCodeCREDIT2CARD).
+		WithAuth(auth).
+		WithClientKey("clientKey").
+		WithOrderID(&orderID).
+		WithAmount("1.00").
+		ForCurrency(currency.UAH).
+		WithDescription(desc).
+		WithCardToken(&token).
+		WithPayerFirstName(&firstName).
+		WithPayerLastName(&lastName).
+		WithPayerAddress(&address).
+		WithPayerCountry(&country).
+		WithPayerState(&state).
+		WithPayerCity(&city).
+		WithPayerZip(&zip).
+		SignForAction(HashTypeCredit2CardToken)
+
+	signed, err := req.SignAndPrepare()
+	if err != nil {
+		t.Fatalf("SignAndPrepare() error: %v", err)
+	}
+
+	const want = "9d63d6b5b3de7807899d10e08f00864a"
+	if signed.Hash != want {
+		t.Fatalf("hash mismatch: want %s, got %s", want, signed.Hash)
+	}
+}
+
+func TestSignAndPrepare_GetTransStatusByOrderSignature(t *testing.T) {
+	auth := &Auth{Key: "k", Secret: "secret123"}
+
+	orderID := "order-123"
+
+	req := NewRequest(ActionCodeGetTransStatusByOrder).
+		WithAuth(auth).
+		WithClientKey("clientKey").
+		WithOrderID(&orderID).
+		SignForAction(HashTypeGetTransStatusByOrder)
+
+	signed, err := req.SignAndPrepare()
+	if err != nil {
+		t.Fatalf("SignAndPrepare() error: %v", err)
+	}
+
+	const want = "b6a84d3306211abea3704548513662d6"
 	if signed.Hash != want {
 		t.Fatalf("hash mismatch: want %s, got %s", want, signed.Hash)
 	}
@@ -309,7 +406,6 @@ func TestSignAndPrepare_CaptureWithSplitRules(t *testing.T) {
 
 	email := "payer@example.com"
 	transID := "632508054"
-	cardHashPart := "4111111111" // first6+last4
 
 	req := NewRequest(ActionCodeCAPTURE).
 		WithAuth(auth).
@@ -321,8 +417,7 @@ func TestSignAndPrepare_CaptureWithSplitRules(t *testing.T) {
 			"submerchant_02": "7.50",
 		}).
 		WithHashEmail(&email).
-		SignForAction(HashTypeCapture).
-		WithCardHashPart(&cardHashPart)
+		SignForAction(HashTypeCapture)
 
 	signed, err := req.SignAndPrepare()
 	if err != nil {
@@ -340,7 +435,6 @@ func TestSignAndPrepare_CreditVoidSplitRulesExceedAmount(t *testing.T) {
 
 	email := "payer@example.com"
 	transID := "632508054"
-	cardHashPart := "4111111111" // first6+last4
 
 	req := NewRequest(ActionCodeCREDITVOID).
 		WithAuth(auth).
@@ -352,8 +446,7 @@ func TestSignAndPrepare_CreditVoidSplitRulesExceedAmount(t *testing.T) {
 			"submerchant_02": "0.40",
 		}).
 		WithHashEmail(&email).
-		SignForAction(HashTypeCreditVoid).
-		WithCardHashPart(&cardHashPart)
+		SignForAction(HashTypeCreditVoid)
 
 	if _, err := req.SignAndPrepare(); err == nil {
 		t.Fatalf("expected split rules validation error, got nil")
@@ -495,7 +588,6 @@ func TestRequest_NilReceiver_BuilderChainIsSafe(t *testing.T) {
 		WithSplitRules(SplitRules{"submerchant": "1.00"}).
 		WithImmediately(true).
 		WithHashEmail(&email).
-		WithCardHashPart(&value).
 		WithExt3(&value).
 		SignForAction(HashTypeCardPayment)
 

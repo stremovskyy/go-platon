@@ -202,7 +202,7 @@ func TestBuildIAPaymentRequest_CardToken(t *testing.T) {
 	}
 }
 
-func TestBuildIAPaymentRequest_CardPAN(t *testing.T) {
+func TestBuildIAPaymentRequest_CardPAN_IsNotSupported(t *testing.T) {
 	merchant := &Merchant{
 		MerchantKey: "CLIENT_KEY",
 		SecretKey:   "CLIENT_PASS",
@@ -232,30 +232,12 @@ func TestBuildIAPaymentRequest_CardPAN(t *testing.T) {
 	}
 
 	c := &client{}
-	apiReq, apiURL, err := c.buildIAPaymentRequest(req, false)
-	if err != nil {
-		t.Fatalf("buildIAPaymentRequest() error: %v", err)
-	}
-
-	if apiURL != consts.ApiPostUnqURL {
-		t.Fatalf("apiURL mismatch: want %q, got %q", consts.ApiPostUnqURL, apiURL)
-	}
-	if apiReq.HashType != platon.HashTypeCardPayment {
-		t.Fatalf("hash type mismatch: want %q, got %q", platon.HashTypeCardPayment, apiReq.HashType)
-	}
-	if apiReq.ReqToken == nil || *apiReq.ReqToken != "N" {
-		t.Fatalf("req_token mismatch: want N, got %v", apiReq.ReqToken)
-	}
-	if apiReq.RecurringInit == nil || *apiReq.RecurringInit != "N" {
-		t.Fatalf("recurring_init mismatch: want N, got %v", apiReq.RecurringInit)
-	}
-
-	if _, err := apiReq.SignAndPrepare(); err != nil {
-		t.Fatalf("SignAndPrepare() error: %v", err)
+	if _, _, err := c.buildIAPaymentRequest(req, false); err == nil {
+		t.Fatalf("buildIAPaymentRequest() expected error for PAN payment, got nil")
 	}
 }
 
-func TestBuildIAPaymentRequest_CardPAN_WithSplitRules(t *testing.T) {
+func TestBuildIAPaymentRequest_CardPAN_WithSplitRules_IsNotSupported(t *testing.T) {
 	merchant := &Merchant{
 		MerchantKey: "CLIENT_KEY",
 		SecretKey:   "CLIENT_PASS",
@@ -289,23 +271,8 @@ func TestBuildIAPaymentRequest_CardPAN_WithSplitRules(t *testing.T) {
 	}
 
 	c := &client{}
-	apiReq, _, err := c.buildIAPaymentRequest(req, false)
-	if err != nil {
-		t.Fatalf("buildIAPaymentRequest() error: %v", err)
-	}
-
-	if len(apiReq.SplitRules) != 2 {
-		t.Fatalf("split_rules count mismatch: want 2, got %d", len(apiReq.SplitRules))
-	}
-	if apiReq.SplitRules["submerchant_01"] != "25.00" {
-		t.Fatalf("split_rules[\"submerchant_01\"] mismatch: want 25.00, got %s", apiReq.SplitRules["submerchant_01"])
-	}
-	if apiReq.SplitRules["submerchant_02"] != "75.00" {
-		t.Fatalf("split_rules[\"submerchant_02\"] mismatch: want 75.00, got %s", apiReq.SplitRules["submerchant_02"])
-	}
-
-	if _, err := apiReq.SignAndPrepare(); err != nil {
-		t.Fatalf("SignAndPrepare() error: %v", err)
+	if _, _, err := c.buildIAPaymentRequest(req, false); err == nil {
+		t.Fatalf("buildIAPaymentRequest() expected error for PAN payment, got nil")
 	}
 }
 

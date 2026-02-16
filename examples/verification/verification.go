@@ -49,8 +49,6 @@ func main() {
 		FailRedirect:    cfg.FailRedirect,
 	}
 
-	client.SetLogLevel(log.LevelDebug)
-
 	orderID := uuid.NewString()
 
 	req := &go_platon.Request{
