@@ -32,6 +32,7 @@ import (
 	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/currency"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
+	"github.com/stremovskyy/go-platon/examples/internal/demo"
 	"github.com/stremovskyy/go-platon/log"
 )
 
@@ -54,7 +55,7 @@ func main() {
 	req := &go_platon.Request{
 		Merchant: merchant,
 		PaymentMethod: &go_platon.PaymentMethod{
-			GoogleToken: ref(cfg.GoogleToken),
+			GoogleToken: ref(demo.GoogleToken),
 		},
 		PaymentData: &go_platon.PaymentData{
 			PaymentID:   ref(orderID),
@@ -63,7 +64,7 @@ func main() {
 			Description: "Simple Google Pay example",
 		},
 		PersonalData: &go_platon.PersonalData{
-			Email: ref(cfg.PayerEmail),
+			Email: ref(demo.PayerEmail),
 			Phone: ref("380631234567"),
 		},
 	}

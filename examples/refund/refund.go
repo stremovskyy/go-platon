@@ -29,6 +29,7 @@ import (
 
 	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
+	"github.com/stremovskyy/go-platon/examples/internal/demo"
 	"github.com/stremovskyy/go-platon/log"
 )
 
@@ -46,7 +47,7 @@ func main() {
 		Merchant: merchant,
 		PaymentMethod: &go_platon.PaymentMethod{
 			Card: &go_platon.Card{
-				Pan: ref(cfg.CardNumber),
+				Pan: ref(demo.CardNumber),
 			},
 		},
 		PaymentData: &go_platon.PaymentData{
@@ -57,7 +58,7 @@ func main() {
 			},
 		},
 		PersonalData: &go_platon.PersonalData{
-			Email: ref(cfg.PayerEmail),
+			Email: ref(demo.PayerEmail),
 		},
 	}
 

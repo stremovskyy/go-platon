@@ -32,6 +32,7 @@ import (
 	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/currency"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
+	"github.com/stremovskyy/go-platon/examples/internal/demo"
 	"github.com/stremovskyy/go-platon/log"
 )
 
@@ -72,10 +73,10 @@ func main() {
 		Merchant: merchant,
 		PaymentMethod: &go_platon.PaymentMethod{
 			Card: &go_platon.Card{
-				Pan:             ref(cfg.CardNumber),
-				ExpirationMonth: ref(cfg.CardMonth),
-				ExpirationYear:  ref(cfg.CardYear),
-				Cvv2:            ref(cfg.CardCVV),
+				Pan:             ref(demo.CardNumber),
+				ExpirationMonth: ref(demo.CardMonth),
+				ExpirationYear:  ref(demo.CardYear),
+				Cvv2:            ref(demo.CardCVV),
 			},
 		},
 		PaymentData: &go_platon.PaymentData{
@@ -89,7 +90,7 @@ func main() {
 			},
 		},
 		PersonalData: &go_platon.PersonalData{
-			Email: ref(cfg.PayerEmail),
+			Email: ref(demo.PayerEmail),
 			Phone: ref("380631234567"),
 		},
 	}

@@ -3,6 +3,7 @@
 Runnable examples are available under `examples/`.
 Examples load credentials from environment variables using `examples/internal/config`.
 Copy `examples/.env.example` to `examples/.env` and set real values before running examples.
+Demo card/token/email values used by payment examples are defined in `examples/internal/demo/data.go`.
 
 ## Card Verification (Client-Server Form)
 

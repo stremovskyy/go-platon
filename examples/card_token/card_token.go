@@ -32,6 +32,7 @@ import (
 	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/currency"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
+	"github.com/stremovskyy/go-platon/examples/internal/demo"
 	"github.com/stremovskyy/go-platon/log"
 )
 
@@ -55,7 +56,7 @@ func main() {
 		Merchant: merchant,
 		PaymentMethod: &go_platon.PaymentMethod{
 			Card: &go_platon.Card{
-				Token: ref(cfg.CardToken),
+				Token: ref(demo.CardToken),
 			},
 		},
 		PaymentData: &go_platon.PaymentData{
@@ -65,7 +66,7 @@ func main() {
 			Description: "Simple card token payment example",
 		},
 		PersonalData: &go_platon.PersonalData{
-			Email: ref(cfg.PayerEmail),
+			Email: ref(demo.PayerEmail),
 		},
 	}
 
