@@ -51,7 +51,7 @@ func main() {
 			Metadata: map[string]string{
 				"immediately": "Y",
 				"ext4":        demo.Ext4,
-				"ext5":        demo.Ext5,
+				"ext5":        "[ref:" + uuid.New().String() + "]",
 			},
 		},
 		PersonalData: &go_platon.PersonalData{

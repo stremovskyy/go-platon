@@ -58,7 +58,7 @@ func main() {
 			Description: demo.Description,
 			Metadata: map[string]string{
 				"ext4": demo.Ext4,
-				"ext5": demo.Ext5,
+				"ext5": "[ref:" + uuid.New().String() + "]",
 			},
 		},
 		PaymentMethod: &go_platon.PaymentMethod{
