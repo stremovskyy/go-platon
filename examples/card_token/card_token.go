@@ -27,6 +27,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/google/uuid"
+
 	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/currency"
 	"github.com/stremovskyy/go-platon/examples/demo"
@@ -41,7 +43,7 @@ func main() {
 
 	merchant := &go_platon.Merchant{
 		MerchantID:      cfg.MerchantID,
-		MerchantKey:     demo.ClientKey,
+		MerchantKey:     cfg.MerchantKey,
 		SecretKey:       cfg.SecretKey,
 		SuccessRedirect: cfg.SuccessRedirect,
 		FailRedirect:    cfg.FailRedirect,

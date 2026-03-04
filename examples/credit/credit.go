@@ -41,7 +41,7 @@ func main() {
 	client.SetLogLevel(log.LevelDebug)
 
 	merchant := &go_platon.Merchant{
-		MerchantKey:     demo.ClientKey,
+		MerchantKey:     cfg.MerchantKey,
 		SecretKey:       cfg.SecretKey,
 		SuccessRedirect: cfg.SuccessRedirect,
 		FailRedirect:    cfg.FailRedirect,

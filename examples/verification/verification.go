@@ -42,9 +42,7 @@ func main() {
 	client.SetLogLevel(log.LevelDebug)
 
 	merchant := &go_platon.Merchant{
-		Name:            cfg.MerchantName,
-		MerchantID:      cfg.MerchantID,
-		MerchantKey:     demo.ClientKey,
+		MerchantKey:     cfg.MerchantKey,
 		SecretKey:       cfg.SecretKey,
 		SuccessRedirect: cfg.SuccessRedirect,
 		FailRedirect:    cfg.FailRedirect,
@@ -56,7 +54,7 @@ func main() {
 		Merchant: merchant,
 		PaymentData: &go_platon.PaymentData{
 			PaymentID:   ref(uuid.New().String()),
-			Description: demo.Description,
+			Description: demo.AuthDescription,
 			Currency:    currency.UAH,
 			Amount:      demo.AmountMinor,
 			Metadata: map[string]string{

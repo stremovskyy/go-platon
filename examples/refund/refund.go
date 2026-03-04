@@ -27,6 +27,8 @@ package main
 import (
 	"fmt"
 
+	"github.com/google/uuid"
+
 	go_platon "github.com/stremovskyy/go-platon"
 	"github.com/stremovskyy/go-platon/examples/demo"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
@@ -39,7 +41,7 @@ func main() {
 	client.SetLogLevel(log.LevelDebug)
 
 	merchant := &go_platon.Merchant{
-		MerchantKey: demo.ClientKey,
+		MerchantKey: cfg.MerchantKey,
 		SecretKey:   cfg.SecretKey,
 	}
 

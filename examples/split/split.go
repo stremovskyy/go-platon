@@ -43,7 +43,7 @@ func main() {
 
 	merchant := &go_platon.Merchant{
 		MerchantID:      cfg.MerchantID,
-		MerchantKey:     demo.ClientKey,
+		MerchantKey:     cfg.MerchantKey,
 		SecretKey:       cfg.SecretKey,
 		SuccessRedirect: cfg.SuccessRedirect,
 		FailRedirect:    cfg.FailRedirect,
