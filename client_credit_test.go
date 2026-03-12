@@ -121,10 +121,95 @@ func TestStatus_DryRun_A2CFlow_UsesP2PEndpointAndHash(t *testing.T) {
 	if capturedRequest == nil {
 		t.Fatal("Status() captured request is nil")
 	}
+	if capturedRequest.HashType != platon.HashTypeGetTransStatusByOrderA2C {
+		t.Fatalf("Status() hash type mismatch: want %q, got %q", platon.HashTypeGetTransStatusByOrderA2C, capturedRequest.HashType)
+	}
+	if capturedRequest.Action != platon.ActionCodeGetTransStatusByOrder.String() {
+		t.Fatalf("Status() action mismatch: want %q, got %q", platon.ActionCodeGetTransStatusByOrder.String(), capturedRequest.Action)
+	}
+}
+
+func TestStatus_DryRun_IEFlow_UsesOrderIDEndpointAndHash(t *testing.T) {
+	var capturedEndpoint string
+	var capturedRequest *platon.Request
+
+	c := &client{}
+	request := &Request{
+		Merchant: &Merchant{
+			MerchantKey: "CLIENT_KEY",
+			SecretKey:   "CLIENT_PASS",
+		},
+		PaymentData: &PaymentData{
+			PaymentID: ref("ORDER-3"),
+		},
+	}
+
+	_, err := c.Status(
+		request, DryRun(
+			func(endpoint string, payload any) {
+				capturedEndpoint = endpoint
+				capturedRequest, _ = payload.(*platon.Request)
+			},
+		),
+	)
+	if err != nil {
+		t.Fatalf("Status() unexpected error: %v", err)
+	}
+
+	if capturedEndpoint != consts.ApiGetTransStatus {
+		t.Fatalf("Status() endpoint mismatch: want %q, got %q", consts.ApiGetTransStatus, capturedEndpoint)
+	}
+	if capturedRequest == nil {
+		t.Fatal("Status() captured request is nil")
+	}
 	if capturedRequest.HashType != platon.HashTypeGetTransStatusByOrder {
 		t.Fatalf("Status() hash type mismatch: want %q, got %q", platon.HashTypeGetTransStatusByOrder, capturedRequest.HashType)
 	}
 	if capturedRequest.Action != platon.ActionCodeGetTransStatusByOrder.String() {
 		t.Fatalf("Status() action mismatch: want %q, got %q", platon.ActionCodeGetTransStatusByOrder.String(), capturedRequest.Action)
+	}
+}
+
+func TestStatus_DryRun_TransIDFlow_UsesGetTransStatusRequest(t *testing.T) {
+	var capturedEndpoint string
+	var capturedRequest *platon.Request
+
+	c := &client{}
+	request := &Request{
+		Merchant: &Merchant{
+			MerchantKey: "CLIENT_KEY",
+			SecretKey:   "CLIENT_PASS",
+		},
+		PersonalData: &PersonalData{
+			Email: ref("payer@example.com"),
+		},
+		PaymentData: &PaymentData{
+			PlatonTransID: ref("632508054"),
+		},
+	}
+
+	_, err := c.Status(
+		request, DryRun(
+			func(endpoint string, payload any) {
+				capturedEndpoint = endpoint
+				capturedRequest, _ = payload.(*platon.Request)
+			},
+		),
+	)
+	if err != nil {
+		t.Fatalf("Status() unexpected error: %v", err)
+	}
+
+	if capturedEndpoint != consts.ApiGetTransStatus {
+		t.Fatalf("Status() endpoint mismatch: want %q, got %q", consts.ApiGetTransStatus, capturedEndpoint)
+	}
+	if capturedRequest == nil {
+		t.Fatal("Status() captured request is nil")
+	}
+	if capturedRequest.HashType != platon.HashTypeGetTransStatus {
+		t.Fatalf("Status() hash type mismatch: want %q, got %q", platon.HashTypeGetTransStatus, capturedRequest.HashType)
+	}
+	if capturedRequest.Action != platon.ActionCodeGetTransStatus.String() {
+		t.Fatalf("Status() action mismatch: want %q, got %q", platon.ActionCodeGetTransStatus.String(), capturedRequest.Action)
 	}
 }

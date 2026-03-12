@@ -243,7 +243,7 @@ func TestSignAndPrepare_GetTransStatusSignature(t *testing.T) {
 		WithAuth(auth).
 		WithClientKey("clientKey").
 		WithTransID(&transID).
-		WithPayerEmail(&email).
+		WithHashEmail(&email).
 		SignForAction(HashTypeGetTransStatus)
 
 	signed, err := req.SignAndPrepare()
@@ -413,6 +413,28 @@ func TestSignAndPrepare_GetTransStatusByOrderSignature(t *testing.T) {
 		WithClientKey("clientKey").
 		WithOrderID(&orderID).
 		SignForAction(HashTypeGetTransStatusByOrder)
+
+	signed, err := req.SignAndPrepare()
+	if err != nil {
+		t.Fatalf("SignAndPrepare() error: %v", err)
+	}
+
+	const want = "32c25cdabdb29d4d5a0bd1f216610424"
+	if signed.Hash != want {
+		t.Fatalf("hash mismatch: want %s, got %s", want, signed.Hash)
+	}
+}
+
+func TestSignAndPrepare_GetTransStatusByOrderA2CSignature(t *testing.T) {
+	auth := &Auth{Key: "k", Secret: "secret123"}
+
+	orderID := "order-123"
+
+	req := NewRequest(ActionCodeGetTransStatusByOrder).
+		WithAuth(auth).
+		WithClientKey("clientKey").
+		WithOrderID(&orderID).
+		SignForAction(HashTypeGetTransStatusByOrderA2C)
 
 	signed, err := req.SignAndPrepare()
 	if err != nil {

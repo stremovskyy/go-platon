@@ -167,13 +167,27 @@ default:
 
 ## GET_TRANS_STATUS_BY_ORDER
 
-`client.Status(req)` sends `GET_TRANS_STATUS_BY_ORDER`.
+`client.Status(req)` sends `GET_TRANS_STATUS_BY_ORDER` when `PaymentData.PaymentID` is set.
 
 Required:
 
 - `PaymentData.PaymentID` (merchant `order_id`)
 
-Signature uses `order_id + client_pass` (uppercase MD5).
+Signature uses `client_pass + order_id` (uppercase MD5) for IE `/post-unq/`.
+
+## GET_TRANS_STATUS
+
+`client.Status(req)` sends `GET_TRANS_STATUS` when `PaymentData.PlatonTransID` is set.
+
+Required:
+
+- `PaymentData.PlatonTransID` (or legacy `PaymentData.PlatonPaymentID`)
+
+Optional:
+
+- `PersonalData.Email` (signature-only)
+
+Signature uses `strrev(email) + client_pass + trans_id` (uppercase MD5).
 
 ## GET_SUBMERCHANT
 
@@ -264,3 +278,4 @@ or filled with safe defaults.
 
 `client.Status(req)` supports A2C status checks over `/p2p-unq/` when
 `PaymentData.Metadata["platon_flow"] == "a2c"`.
+For that flow, `GET_TRANS_STATUS_BY_ORDER` uses `order_id + client_pass` (uppercase MD5).

@@ -159,6 +159,11 @@ func (r *Request) SignAndPrepare() (*Request, error) {
 		if err != nil {
 			return nil, fmt.Errorf("signature generation failed: %w", err)
 		}
+	case HashTypeGetTransStatusByOrderA2C:
+		sign, err = r.generateGetTransStatusByOrderA2CSignature()
+		if err != nil {
+			return nil, fmt.Errorf("signature generation failed: %w", err)
+		}
 	case HashTypeGetSubmerchant:
 		sign, err = r.generateGetSubmerchantSignature()
 		if err != nil {
@@ -270,17 +275,14 @@ func (r *Request) generateCardPanSignature() (string, error) {
 		return "", fmt.Errorf("card_number is required for signature generation")
 	}
 
-	// Extract card number first 6 and last 4 digits
-	cardNumber := *r.CardNumber
-	if len(cardNumber) < 10 {
-		return "", fmt.Errorf("card_number is too short")
+	cardFragment, err := signatureCardFragment(*r.CardNumber)
+	if err != nil {
+		return "", fmt.Errorf("card_number: %w", err)
 	}
-	cardFirst6 := cardNumber[0:6]
-	cardLast4 := cardNumber[len(cardNumber)-4:]
 
 	// Reverse strings according to PHP implementation
 	reversedEmail := reverseString(*r.PayerEmail)
-	reversedCard := reverseString(cardFirst6 + cardLast4)
+	reversedCard := reverseString(cardFragment)
 
 	// Log the components
 	logger.All("Components: email='%s', card='%s'", reversedEmail, reversedCard)
@@ -379,6 +381,8 @@ func (r *Request) generateTransIDSignature() (string, error) {
 	}
 
 	reversedEmail := reverseString(email)
+	logger.All("Components: email='%s', trans_id='%s'", reversedEmail, *r.TransId)
+
 	concatenated := reversedEmail + r.Auth.Secret + *r.TransId
 
 	upperConcatenated := strings.ToUpper(concatenated)
@@ -400,6 +404,28 @@ func (r *Request) generateGetTransStatusByOrderSignature() (string, error) {
 		return "", fmt.Errorf("order_id is required for signature generation")
 	}
 
+	// Per IE docs: md5(strtoupper(client_pass + order_id))
+	concatenated := r.Auth.Secret + *r.OrderID
+	upperConcatenated := strings.ToUpper(concatenated)
+	hash := md5.Sum([]byte(upperConcatenated))
+	signature := hex.EncodeToString(hash[:])
+	logger.All("Generated MD5 signature: %s", signature)
+
+	return signature, nil
+}
+
+func (r *Request) generateGetTransStatusByOrderA2CSignature() (string, error) {
+	logger := log.NewLogger("GetTransStatusByOrderA2CSignature")
+	logger.All("Generating signature for A2C GET_TRANS_STATUS_BY_ORDER request")
+
+	if r.Auth == nil || r.Auth.Secret == "" {
+		return "", fmt.Errorf("Auth secret is required for signature generation")
+	}
+	if r.OrderID == nil || *r.OrderID == "" {
+		return "", fmt.Errorf("order_id is required for signature generation")
+	}
+
+	// Per A2C docs: md5(strtoupper(order_id + client_pass))
 	concatenated := *r.OrderID + r.Auth.Secret
 	upperConcatenated := strings.ToUpper(concatenated)
 	hash := md5.Sum([]byte(upperConcatenated))
@@ -882,6 +908,8 @@ func (r *Request) validateByHashType() error {
 		}
 
 	case HashTypeGetTransStatusByOrder:
+		fallthrough
+	case HashTypeGetTransStatusByOrderA2C:
 		if r.Action != ActionCodeGetTransStatusByOrder.String() {
 			return fmt.Errorf("get_trans_status_by_order: action must be %s", ActionCodeGetTransStatusByOrder.String())
 		}
@@ -1042,6 +1070,18 @@ func (r *Request) validateByHashType() error {
 	}
 
 	return nil
+}
+
+func signatureCardFragment(cardValue string) (string, error) {
+	cardValue = strings.TrimSpace(cardValue)
+	if cardValue == "" {
+		return "", fmt.Errorf("value is empty")
+	}
+	if len(cardValue) < 10 {
+		return "", fmt.Errorf("value is too short")
+	}
+
+	return cardValue[:6] + cardValue[len(cardValue)-4:], nil
 }
 
 func refString(value string) *string {

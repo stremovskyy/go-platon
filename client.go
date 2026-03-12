@@ -103,9 +103,26 @@ func (c *client) Status(request *Request, runOpts ...RunOption) (*platon.Respons
 
 	opts := collectRunOptions(runOpts)
 
+	transID := request.GetPlatonTransID()
+	if transID != nil && strings.TrimSpace(*transID) != "" {
+		statusRequest := platon.NewRequest(platon.ActionCodeGetTransStatus).
+			WithAuth(request.GetAuth()).
+			WithClientKey(request.GetMerchantKey()).
+			WithTransID(transID).
+			WithHashEmail(request.GetPayerEmail()).
+			SignForAction(platon.HashTypeGetTransStatus)
+
+		if opts.isDryRun() {
+			opts.handleDryRun(consts.ApiGetTransStatus, statusRequest)
+			return nil, nil
+		}
+
+		return c.platonClient.Api(statusRequest, consts.ApiGetTransStatus)
+	}
+
 	orderID := request.GetPaymentID()
 	if orderID == nil || strings.TrimSpace(*orderID) == "" {
-		return nil, fmt.Errorf("status: order_id is required (set PaymentData.PaymentID)")
+		return nil, fmt.Errorf("status: order_id is required (set PaymentData.PaymentID) or use PaymentData.PlatonTransID for GET_TRANS_STATUS")
 	}
 
 	isA2C := isA2CStatusRequest(request)
@@ -113,6 +130,7 @@ func (c *client) Status(request *Request, runOpts ...RunOption) (*platon.Respons
 	statusURL := consts.ApiGetTransStatus
 	if isA2C {
 		statusURL = consts.ApiP2PUnqURL
+		statusHashType = platon.HashTypeGetTransStatusByOrderA2C
 	}
 
 	statusRequest := platon.NewRequest(platon.ActionCodeGetTransStatusByOrder).

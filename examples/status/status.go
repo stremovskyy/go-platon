@@ -26,11 +26,10 @@ package main
 
 import (
 	"fmt"
-
-	"github.com/google/uuid"
+	"os"
+	"strings"
 
 	go_platon "github.com/stremovskyy/go-platon"
-	"github.com/stremovskyy/go-platon/examples/demo"
 	"github.com/stremovskyy/go-platon/examples/internal/config"
 	"github.com/stremovskyy/go-platon/log"
 )
@@ -45,15 +44,10 @@ func main() {
 		SecretKey:   cfg.SecretKey,
 	}
 
-	req := &go_platon.Request{
-		Merchant: merchant,
-		PaymentData: &go_platon.PaymentData{
-			PaymentID: ref(uuid.New().String()),
-			Metadata: map[string]string{
-				"ext4": demo.Ext4,
-				"ext5": "[ref:" + uuid.New().String() + "]",
-			},
-		},
+	req, err := buildStatusRequest(merchant)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
 	}
 
 	resp, err := client.Status(req)
@@ -67,4 +61,49 @@ func main() {
 
 func ref(value string) *string {
 	return &value
+}
+
+func buildStatusRequest(merchant *go_platon.Merchant) (*go_platon.Request, error) {
+	transID := env("PLATON_STATUS_TRANS_ID")
+	orderID := env("PLATON_STATUS_ORDER_ID")
+	statusFlow := strings.ToLower(env("PLATON_STATUS_FLOW"))
+
+	switch {
+	case transID != "":
+		req := &go_platon.Request{
+			Merchant: merchant,
+			PaymentData: &go_platon.PaymentData{
+				PlatonTransID: ref(transID),
+			},
+		}
+
+		if email := env("PLATON_STATUS_PAYER_EMAIL"); email != "" {
+			req.PersonalData = &go_platon.PersonalData{
+				Email: ref(email),
+			}
+		}
+
+		return req, nil
+
+	case orderID != "":
+		req := &go_platon.Request{
+			Merchant: merchant,
+			PaymentData: &go_platon.PaymentData{
+				PaymentID: ref(orderID),
+			},
+		}
+		if statusFlow == "a2c" {
+			req.PaymentData.Metadata = map[string]string{
+				"platon_flow": "a2c",
+			}
+		}
+		return req, nil
+
+	default:
+		return nil, fmt.Errorf("set PLATON_STATUS_ORDER_ID for GET_TRANS_STATUS_BY_ORDER, or PLATON_STATUS_TRANS_ID for GET_TRANS_STATUS")
+	}
+}
+
+func env(key string) string {
+	return strings.TrimSpace(os.Getenv(key))
 }

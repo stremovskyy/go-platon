@@ -28,9 +28,13 @@ See:
 - `examples/apple_pay/apple_pay.go`
 - `examples/google_pay/google_pay.go`
 
-## GET_TRANS_STATUS
+## Status
 
 See `examples/status/status.go`.
+It accepts either:
+
+- `PLATON_STATUS_ORDER_ID` for `GET_TRANS_STATUS_BY_ORDER`
+- `PLATON_STATUS_TRANS_ID` for `GET_TRANS_STATUS`
 
 ## Webhook Callback (form-urlencoded)
 

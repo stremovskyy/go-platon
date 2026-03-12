@@ -125,6 +125,9 @@ const (
 	// HashTypeGetTransStatusByOrder is used for the GET_TRANS_STATUS_BY_ORDER request.
 	HashTypeGetTransStatusByOrder HashType = "get_trans_status_by_order"
 
+	// HashTypeGetTransStatusByOrderA2C is used for A2C GET_TRANS_STATUS_BY_ORDER requests over /p2p-unq/.
+	HashTypeGetTransStatusByOrderA2C HashType = "get_trans_status_by_order_a2c"
+
 	// HashTypeCapture is used for CAPTURE (confirm HOLD).
 	HashTypeCapture HashType = "capture"
 
