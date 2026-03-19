@@ -204,3 +204,23 @@ func TestParseWebhookValues_ExtFields(t *testing.T) {
 		t.Fatalf("ext10 mismatch: got %q", form.Ext10)
 	}
 }
+
+func TestParseWebhookValues_Aliases(t *testing.T) {
+	values := url.Values{
+		"trans_id": []string{"47390-44719-73004"},
+		"order_id": []string{"58036844-17ef-48a0-8484-848320f461fe"},
+		"rcid":     []string{"47390-44719-73004"},
+	}
+
+	form := ParseWebhookValues(values)
+
+	if form.TransID != "47390-44719-73004" {
+		t.Fatalf("trans_id mismatch: got %q", form.TransID)
+	}
+	if form.Order != "58036844-17ef-48a0-8484-848320f461fe" {
+		t.Fatalf("order alias mismatch: got %q", form.Order)
+	}
+	if form.RCID != "47390-44719-73004" {
+		t.Fatalf("rcid alias mismatch: got %q", form.RCID)
+	}
+}

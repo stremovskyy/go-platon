@@ -36,6 +36,7 @@ import (
 // application/x-www-form-urlencoded.
 type WebhookForm struct {
 	ID              string
+	TransID         string
 	Order           string
 	Status          string
 	Card            string
@@ -89,7 +90,8 @@ func ParseWebhookValues(values url.Values) *WebhookForm {
 
 	return &WebhookForm{
 		ID:              strings.TrimSpace(values.Get("id")),
-		Order:           strings.TrimSpace(values.Get("order")),
+		TransID:         firstNonEmptyValue(values, "trans_id", "transaction_id"),
+		Order:           firstNonEmptyValue(values, "order", "order_id"),
 		Status:          strings.TrimSpace(values.Get("status")),
 		Card:            strings.TrimSpace(values.Get("card")),
 		Description:     strings.TrimSpace(values.Get("description")),
@@ -101,7 +103,7 @@ func ParseWebhookValues(values url.Values) *WebhookForm {
 		Date:            strings.TrimSpace(values.Get("date")),
 		IP:              strings.TrimSpace(values.Get("ip")),
 		Sign:            strings.TrimSpace(values.Get("sign")),
-		RCID:            strings.TrimSpace(values.Get("rc_id")),
+		RCID:            firstNonEmptyValue(values, "rc_id", "rcid"),
 		RCToken:         strings.TrimSpace(values.Get("rc_token")),
 		IssuingBank:     strings.TrimSpace(values.Get("issuing_bank")),
 		Ext1:            strings.TrimSpace(values.Get("ext1")),
@@ -118,6 +120,16 @@ func ParseWebhookValues(values url.Values) *WebhookForm {
 		Brand:           strings.TrimSpace(values.Get("brand")),
 		Terminal:        strings.TrimSpace(values.Get("terminal")),
 	}
+}
+
+func firstNonEmptyValue(values url.Values, keys ...string) string {
+	for _, key := range keys {
+		if value := strings.TrimSpace(values.Get(key)); value != "" {
+			return value
+		}
+	}
+
+	return ""
 }
 
 // ExpectedSign computes the callback signature based on Platon docs:
