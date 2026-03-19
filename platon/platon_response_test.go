@@ -138,3 +138,28 @@ func TestUnmarshalJSONResponse_ErrorMessageObject(t *testing.T) {
 		t.Fatalf("expected parsed object in error, got %q", gotErr.Error())
 	}
 }
+
+func TestUnmarshalJSONResponse_StatusByOrderPayload(t *testing.T) {
+	raw := []byte(`{"action":"GET_TRANS_STATUS_BY_ORDER","orders":[{"amount":"101.55","date":"2026-03-19 07:14:31","order_id":"58036844-17ef-48a0-8484-848320f461fe","status":"SETTLED","trans_id":"47390-44719-73004"}],"result":"SUCCESS"}`)
+
+	resp, err := UnmarshalJSONResponse(raw)
+	if err != nil {
+		t.Fatalf("UnmarshalJSONResponse() error: %v", err)
+	}
+
+	if len(resp.Orders) != 1 {
+		t.Fatalf("expected 1 order, got %d", len(resp.Orders))
+	}
+	if resp.Status == nil || *resp.Status != "SETTLED" {
+		t.Fatalf("expected top-level status to be populated from orders[0], got %v", resp.Status)
+	}
+	if resp.OrderId == nil || *resp.OrderId != "58036844-17ef-48a0-8484-848320f461fe" {
+		t.Fatalf("unexpected order_id: %v", resp.OrderId)
+	}
+	if resp.TransId == nil || *resp.TransId != "47390-44719-73004" {
+		t.Fatalf("unexpected trans_id: %v", resp.TransId)
+	}
+	if gotErr := resp.GetError(); gotErr != nil {
+		t.Fatalf("expected nil error, got %v", gotErr)
+	}
+}

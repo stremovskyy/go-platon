@@ -50,9 +50,19 @@ type Response struct {
 	OrderId       *string       `json:"order_id"`
 	TransId       *string       `json:"trans_id"`
 	TransDate     *string       `json:"trans_date"`
+	Orders        []Order       `json:"orders,omitempty"`
 	ResponseData  *ResponseData `json:"response,omitempty"`
 	ErrorMessage  string        `json:"error_message"`
 	DeclineReason string        `json:"decline_reason"`
+}
+
+type Order struct {
+	Amount   *string `json:"amount,omitempty"`
+	Date     *string `json:"date,omitempty"`
+	OrderId  *string `json:"order_id,omitempty"`
+	Status   *string `json:"status,omitempty"`
+	TransId  *string `json:"trans_id,omitempty"`
+	Currency *string `json:"currency,omitempty"`
 }
 
 type ResponseData struct {
@@ -86,6 +96,18 @@ func (p *Response) PrettyPrint() {
 	}
 	if p.TransDate != nil {
 		fmt.Printf("trans_date: %s\n", *p.TransDate)
+	}
+	if len(p.Orders) > 0 {
+		firstOrder := p.Orders[0]
+		if firstOrder.Status != nil {
+			fmt.Printf("orders[0].status: %s\n", *firstOrder.Status)
+		}
+		if firstOrder.OrderId != nil {
+			fmt.Printf("orders[0].order_id: %s\n", *firstOrder.OrderId)
+		}
+		if firstOrder.TransId != nil {
+			fmt.Printf("orders[0].trans_id: %s\n", *firstOrder.TransId)
+		}
 	}
 	if p.ResponseData != nil && p.ResponseData.SubmerchantID != nil {
 		fmt.Printf("submerchant_id: %s\n", *p.ResponseData.SubmerchantID)
@@ -155,6 +177,7 @@ func (p *Response) UnmarshalJSON(data []byte) error {
 		OrderId             *string         `json:"order_id"`
 		TransId             *string         `json:"trans_id"`
 		TransDate           *string         `json:"trans_date"`
+		Orders              []Order         `json:"orders,omitempty"`
 		ResponseData        *ResponseData   `json:"response,omitempty"`
 		SubmerchantID       *string         `json:"submerchant_id,omitempty"`
 		SubmerchantIDStatus *string         `json:"submerchant_id_status,omitempty"`
@@ -183,6 +206,7 @@ func (p *Response) UnmarshalJSON(data []byte) error {
 	p.OrderId = raw.OrderId
 	p.TransId = raw.TransId
 	p.TransDate = raw.TransDate
+	p.Orders = raw.Orders
 	responseData := raw.ResponseData
 	if responseData == nil {
 		if raw.SubmerchantID != nil || raw.SubmerchantIDStatus != nil || raw.Hash != nil {
@@ -207,6 +231,22 @@ func (p *Response) UnmarshalJSON(data []byte) error {
 	p.ResponseData = responseData
 	p.ErrorMessage = errorMessage
 	p.DeclineReason = declineReason
+
+	if len(p.Orders) > 0 {
+		firstOrder := p.Orders[0]
+		if p.Status == nil && firstOrder.Status != nil {
+			p.Status = firstOrder.Status
+		}
+		if p.OrderId == nil && firstOrder.OrderId != nil {
+			p.OrderId = firstOrder.OrderId
+		}
+		if p.TransId == nil && firstOrder.TransId != nil {
+			p.TransId = firstOrder.TransId
+		}
+		if p.TransDate == nil && firstOrder.Date != nil {
+			p.TransDate = firstOrder.Date
+		}
+	}
 
 	return nil
 }
