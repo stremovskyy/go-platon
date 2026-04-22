@@ -1,0 +1,61 @@
+/*
+ * MIT License
+ *
+ * Copyright (c) 2026 Anton Stremovskyy
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+
+package go_platon
+
+// NewApplePayMethod builds an Apple Pay payment method from any supported
+// backend payload shape:
+// - raw JSON string of ApplePayPaymentToken
+// - raw JSON string of full ApplePayPayment object
+// - legacy base64-encoded Apple payload
+//
+// The returned PaymentMethod stores the normalized token in ApplePayToken.
+func NewApplePayMethod(payload string) (*PaymentMethod, error) {
+	token, err := normalizeApplePayPayload(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PaymentMethod{
+		ApplePayToken: &token,
+	}, nil
+}
+
+// NewGooglePayMethod builds a Google Pay payment method from any supported
+// backend payload shape:
+// - raw JSON string from paymentData.paymentMethodData.tokenizationData.token
+// - raw JSON string of full Google Pay PaymentData payload
+// - legacy base64-encoded Google payload
+//
+// The returned PaymentMethod stores the normalized token in GooglePayToken.
+func NewGooglePayMethod(payload string) (*PaymentMethod, error) {
+	token, err := normalizeGooglePayPayload(payload)
+	if err != nil {
+		return nil, err
+	}
+
+	return &PaymentMethod{
+		GooglePayToken: &token,
+	}, nil
+}

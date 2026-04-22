@@ -90,11 +90,20 @@ func TestRequest_NilReceiver_GettersAreSafe(t *testing.T) {
 	if _, err := req.GetAppleContainer(); err == nil {
 		t.Fatalf("GetAppleContainer() expected error")
 	}
+	if _, err := req.GetApplePayToken(); err == nil {
+		t.Fatalf("GetApplePayToken() expected error")
+	}
 	if req.IsApplePay() {
 		t.Fatalf("IsApplePay() expected false")
 	}
 	if _, err := req.GetGoogleToken(); err == nil {
 		t.Fatalf("GetGoogleToken() expected error")
+	}
+	if _, err := req.GetGooglePayToken(); err == nil {
+		t.Fatalf("GetGooglePayToken() expected error")
+	}
+	if req.IsGooglePay() {
+		t.Fatalf("IsGooglePay() expected false")
 	}
 	if req.GetTrackingData() != nil {
 		t.Fatalf("GetTrackingData() expected nil")

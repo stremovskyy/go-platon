@@ -78,10 +78,50 @@ Runnable example: `examples/card_token/card_token.go`.
 
 ## Apple Pay / Google Pay
 
-- Apple Pay: set `PaymentMethod.AppleContainer` (base64 string of the Apple container).
-- Google Pay: set `PaymentMethod.GoogleToken` (base64 string of the Google Pay token).
+- Use `go_platon.NewApplePayMethod(...)` or `go_platon.NewGooglePayMethod(...)`.
+  These helpers accept the supported client payload shapes and normalize them to the exact
+  `payment_token` format expected by Platon.
+- Apple Pay direct field: set `PaymentMethod.ApplePayToken` to the raw JSON string of
+  `event.payment.token` from Apple Pay JS.
+- Apple Pay full payload: set `PaymentMethod.ApplePayPayment` to the raw JSON string of the
+  full `event.payment` object. The SDK extracts `.token` automatically.
+- Google Pay direct field: set `PaymentMethod.GooglePayToken` to the raw string from
+  `paymentData.paymentMethodData.tokenizationData.token`.
+- Google Pay full payload: set `PaymentMethod.GooglePayPaymentData` to the raw JSON string of the
+  full `paymentData` object. The SDK extracts `tokenizationData.token` automatically.
+- Legacy compatibility: `PaymentMethod.AppleContainer` and `PaymentMethod.GoogleToken`
+  still accept the previous base64-encoded payload format.
 
 Then call `client.Payment(req)` or `client.Hold(req)`.
+
+Example:
+
+```go
+paymentMethod, err := go_platon.NewGooglePayMethod(googlePayTokenFromFrontend)
+if err != nil {
+	panic(err)
+}
+
+req.PaymentMethod = paymentMethod
+resp, err := client.Payment(req)
+```
+
+Client-side mapping:
+
+- Apple Pay JS: run merchant validation and pass `JSON.stringify(event.payment.token)` to your backend.
+- Google Pay Web: configure gateway tokenization with `gateway="platon"` and
+  `gatewayMerchantId=CLIENT_KEY`, then pass
+  `paymentData.paymentMethodData.tokenizationData.token` to your backend.
+
+Platon documents the same gateway configuration for Google Pay and requires:
+
+- `allowedCardNetworks = ["MASTERCARD", "VISA"]`
+- `allowedCardAuthMethods = ["PAN_ONLY", "CRYPTOGRAM_3DS"]`
+
+Platon documents the following Apple Pay request settings:
+
+- `supportedNetworks = ["masterCard", "visa"]`
+- `merchantCapabilities = ["supports3DS", "supportsCredit", "supportsDebit"]`
 
 ## Card Verification (Client-Server)
 

@@ -320,8 +320,8 @@ func (c *client) buildIAPaymentRequest(request *Request, hold bool) (*platon.Req
 		return apiRequest, consts.ApiPostURL, nil
 	}
 
-	if request.PaymentMethod != nil && request.PaymentMethod.GoogleToken != nil {
-		token, err := request.GetGoogleToken()
+	if request.IsGooglePay() {
+		token, err := request.GetGooglePayToken()
 		if err != nil {
 			return nil, "", fmt.Errorf("payment: cannot get Google Pay token: %w", err)
 		}

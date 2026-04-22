@@ -3,7 +3,7 @@
 Runnable examples are available under `examples/`.
 Examples load credentials from environment variables using `examples/internal/config`.
 Copy `examples/.env.example` to `examples/.env` and set real values before running examples.
-Demo card/token/email values used by payment examples are defined in `examples/internal/demo/data.go`.
+Demo card/token/email values used by payment examples are defined in `examples/demo/data.go`.
 
 ## Card Verification (Client-Server Form)
 
@@ -27,6 +27,16 @@ See:
 
 - `examples/apple_pay/apple_pay.go`
 - `examples/google_pay/google_pay.go`
+
+Primary entry points:
+
+- Apple Pay: `go_platon.NewApplePayMethod(...)`
+- Google Pay: `go_platon.NewGooglePayMethod(...)`
+
+Fallback fields when your client sends the full wallet payload instead of the extracted token:
+
+- Apple Pay: `PaymentMethod.ApplePayPayment`
+- Google Pay: `PaymentMethod.GooglePayPaymentData`
 
 ## Status
 

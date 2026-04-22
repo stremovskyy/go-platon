@@ -51,11 +51,15 @@ func main() {
 		TermsURL:        ref(demo.TermsURL3DS),
 	}
 
+	paymentMethod, err := go_platon.NewApplePayMethod(demo.ApplePayToken)
+	if err != nil {
+		fmt.Println("apple pay payload error:", err)
+		return
+	}
+
 	req := &go_platon.Request{
-		Merchant: merchant,
-		PaymentMethod: &go_platon.PaymentMethod{
-			AppleContainer: ref(demo.AppleContainer),
-		},
+		Merchant:      merchant,
+		PaymentMethod: paymentMethod,
 		PaymentData: &go_platon.PaymentData{
 			PaymentID:   ref(uuid.New().String()),
 			Amount:      demo.AmountMinor,

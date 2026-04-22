@@ -25,10 +25,7 @@
 package go_platon
 
 import (
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 
 	"github.com/stremovskyy/go-platon/consts"
@@ -260,21 +257,15 @@ func (r *Request) IsMobile() bool {
 	if r == nil {
 		return false
 	}
+	if r.IsApplePay() || r.IsGooglePay() {
+		return true
+	}
 
 	if r.PaymentData == nil {
 		return false
 	}
 
 	if r.PaymentData.IsMobile {
-		return true
-	}
-	if r.PaymentMethod == nil {
-		return false
-	}
-	if r.PaymentMethod.AppleContainer != nil && *r.PaymentMethod.AppleContainer != "" {
-		return true
-	}
-	if r.PaymentMethod.GoogleToken != nil && *r.PaymentMethod.GoogleToken != "" {
 		return true
 	}
 	return false
@@ -284,77 +275,88 @@ func (r *Request) GetAppleContainer() (*string, error) {
 	if r == nil {
 		return nil, fmt.Errorf("request is nil")
 	}
-
-	if r.PaymentMethod == nil || r.PaymentMethod.AppleContainer == nil {
-		return nil, fmt.Errorf("Apple Container is not set")
-	}
-	if *r.PaymentMethod.AppleContainer == "" {
-		return nil, fmt.Errorf("Apple Container is empty")
-	}
-
-	decoded, err := base64.StdEncoding.DecodeString(*r.PaymentMethod.AppleContainer)
-	if err != nil {
-		return nil, fmt.Errorf("cannot decode Apple Container: %w", err)
-	}
-
-	var token map[string]interface{}
-	if errr := json.Unmarshal(decoded, &token); errr != nil {
-		return nil, fmt.Errorf("json unmarshal error: %w", errr)
-	}
-
-	outputJSON, err := json.Marshal(token["token"])
-	if err != nil {
-		return nil, fmt.Errorf("json marshal error: %w", err)
-	}
-
-	outputBase64 := base64.StdEncoding.EncodeToString(outputJSON)
-	return &outputBase64, nil
+	return r.GetApplePayToken()
 }
 
 func (r *Request) IsApplePay() bool {
-	if r == nil {
+	if r == nil || r.PaymentMethod == nil {
 		return false
 	}
 
-	return r.PaymentMethod != nil && r.PaymentMethod.AppleContainer != nil && *r.PaymentMethod.AppleContainer != ""
+	return firstNonEmptyString(
+		r.PaymentMethod.ApplePayToken,
+		r.PaymentMethod.ApplePayPayment,
+		r.PaymentMethod.AppleContainer,
+	) != nil
 }
 
 func (r *Request) GetGoogleToken() (*string, error) {
 	if r == nil {
 		return nil, fmt.Errorf("request is nil")
 	}
+	return r.GetGooglePayToken()
+}
 
-	if r.PaymentMethod == nil || r.PaymentMethod.GoogleToken == nil {
-		return nil, fmt.Errorf("Google Token is not set")
+func (r *Request) GetApplePayToken() (*string, error) {
+	if r == nil {
+		return nil, fmt.Errorf("request is nil")
 	}
-	if *r.PaymentMethod.GoogleToken == "" {
-		return nil, fmt.Errorf("Google Token is empty")
+	if r.PaymentMethod == nil {
+		return nil, fmt.Errorf("apple pay payload is not set")
 	}
 
-	decoded, err := base64.StdEncoding.DecodeString(*r.PaymentMethod.GoogleToken)
+	value := firstNonEmptyString(
+		r.PaymentMethod.ApplePayToken,
+		r.PaymentMethod.ApplePayPayment,
+		r.PaymentMethod.AppleContainer,
+	)
+	if value == nil {
+		return nil, fmt.Errorf("apple pay payload is not set")
+	}
+
+	token, err := normalizeApplePayPayload(*value)
 	if err != nil {
-		return nil, fmt.Errorf("cannot decode Google Token: %w", err)
+		return nil, fmt.Errorf("cannot normalize Apple Pay payload: %w", err)
 	}
 
-	var data struct {
-		PaymentMethodData struct {
-			TokenizationData struct {
-				Token string `json:"token"`
-			} `json:"tokenizationData"`
-		} `json:"paymentMethodData"`
+	return &token, nil
+}
+
+func (r *Request) IsGooglePay() bool {
+	if r == nil || r.PaymentMethod == nil {
+		return false
 	}
 
-	if errr := json.Unmarshal(decoded, &data); errr != nil {
-		return nil, fmt.Errorf("json unmarshal error: %w", errr)
+	return firstNonEmptyString(
+		r.PaymentMethod.GooglePayToken,
+		r.PaymentMethod.GooglePayPaymentData,
+		r.PaymentMethod.GoogleToken,
+	) != nil
+}
+
+func (r *Request) GetGooglePayToken() (*string, error) {
+	if r == nil {
+		return nil, fmt.Errorf("request is nil")
+	}
+	if r.PaymentMethod == nil {
+		return nil, fmt.Errorf("google pay payload is not set")
 	}
 
-	unescapedToken, err := strconv.Unquote(fmt.Sprintf("%q", data.PaymentMethodData.TokenizationData.Token))
+	value := firstNonEmptyString(
+		r.PaymentMethod.GooglePayToken,
+		r.PaymentMethod.GooglePayPaymentData,
+		r.PaymentMethod.GoogleToken,
+	)
+	if value == nil {
+		return nil, fmt.Errorf("google pay payload is not set")
+	}
+
+	token, err := normalizeGooglePayPayload(*value)
 	if err != nil {
-		return nil, fmt.Errorf("unquote error: %w", err)
+		return nil, fmt.Errorf("cannot normalize Google Pay payload: %w", err)
 	}
 
-	outputBase64 := base64.StdEncoding.EncodeToString([]byte(unescapedToken))
-	return &outputBase64, nil
+	return &token, nil
 }
 
 func (r *Request) GetTrackingData() *int64 {
