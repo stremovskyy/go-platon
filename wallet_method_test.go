@@ -26,8 +26,45 @@ package go_platon
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"testing"
 )
+
+func assertBase64JSON(t *testing.T, got *string, wantJSON string) {
+	t.Helper()
+
+	if got == nil {
+		t.Fatal("expected payment_token to be set")
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(*got)
+	if err != nil {
+		t.Fatalf("payment_token must be base64: %v", err)
+	}
+
+	var gotObject any
+	if err := json.Unmarshal(decoded, &gotObject); err != nil {
+		t.Fatalf("decoded payment_token must be JSON: %v", err)
+	}
+
+	var wantObject any
+	if err := json.Unmarshal([]byte(wantJSON), &wantObject); err != nil {
+		t.Fatalf("want JSON is invalid: %v", err)
+	}
+
+	gotCanonical, err := json.Marshal(gotObject)
+	if err != nil {
+		t.Fatalf("marshal got JSON: %v", err)
+	}
+	wantCanonical, err := json.Marshal(wantObject)
+	if err != nil {
+		t.Fatalf("marshal want JSON: %v", err)
+	}
+
+	if string(gotCanonical) != string(wantCanonical) {
+		t.Fatalf("decoded payment_token mismatch: want %s, got %s", wantCanonical, gotCanonical)
+	}
+}
 
 func TestNewApplePayMethod_FromToken(t *testing.T) {
 	token := `{"paymentData":{"version":"EC_v1","data":"abc"},"paymentMethod":{"network":"Visa"},"transactionIdentifier":"tx-1"}`
@@ -36,9 +73,10 @@ func TestNewApplePayMethod_FromToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewApplePayMethod() error: %v", err)
 	}
-	if method == nil || method.ApplePayToken == nil || *method.ApplePayToken != token {
+	if method == nil {
 		t.Fatalf("NewApplePayMethod() mismatch: got %#v", method)
 	}
+	assertBase64JSON(t, method.ApplePayToken, token)
 }
 
 func TestNewApplePayMethod_FromLegacyBase64(t *testing.T) {
@@ -50,9 +88,10 @@ func TestNewApplePayMethod_FromLegacyBase64(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewApplePayMethod() error: %v", err)
 	}
-	if method == nil || method.ApplePayToken == nil || *method.ApplePayToken != token {
+	if method == nil {
 		t.Fatalf("NewApplePayMethod() mismatch: got %#v", method)
 	}
+	assertBase64JSON(t, method.ApplePayToken, token)
 }
 
 func TestNewGooglePayMethod_FromPaymentData(t *testing.T) {
@@ -65,9 +104,10 @@ func TestNewGooglePayMethod_FromPaymentData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewGooglePayMethod() error: %v", err)
 	}
-	if method == nil || method.GooglePayToken == nil || *method.GooglePayToken != token {
+	if method == nil {
 		t.Fatalf("NewGooglePayMethod() mismatch: got %#v", method)
 	}
+	assertBase64JSON(t, method.GooglePayToken, token)
 }
 
 func TestNewGooglePayMethod_RejectsEmpty(t *testing.T) {

@@ -80,7 +80,7 @@ Runnable example: `examples/card_token/card_token.go`.
 
 - Use `go_platon.NewApplePayMethod(...)` or `go_platon.NewGooglePayMethod(...)`.
   These helpers accept the supported client payload shapes and normalize them to the exact
-  `payment_token` format expected by Platon.
+  base64-encoded `payment_token` format expected by Platon.
 - Apple Pay direct field: set `PaymentMethod.ApplePayToken` to the raw JSON string of
   `event.payment.token` from Apple Pay JS.
 - Apple Pay full payload: set `PaymentMethod.ApplePayPayment` to the raw JSON string of the

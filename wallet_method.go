@@ -30,7 +30,7 @@ package go_platon
 // - raw JSON string of full ApplePayPayment object
 // - legacy base64-encoded Apple payload
 //
-// The returned PaymentMethod stores the normalized token in ApplePayToken.
+// The returned PaymentMethod stores the Platon-ready base64 payment_token in ApplePayToken.
 func NewApplePayMethod(payload string) (*PaymentMethod, error) {
 	token, err := normalizeApplePayPayload(payload)
 	if err != nil {
@@ -48,7 +48,7 @@ func NewApplePayMethod(payload string) (*PaymentMethod, error) {
 // - raw JSON string of full Google Pay PaymentData payload
 // - legacy base64-encoded Google payload
 //
-// The returned PaymentMethod stores the normalized token in GooglePayToken.
+// The returned PaymentMethod stores the Platon-ready base64 payment_token in GooglePayToken.
 func NewGooglePayMethod(payload string) (*PaymentMethod, error) {
 	token, err := normalizeGooglePayPayload(payload)
 	if err != nil {

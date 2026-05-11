@@ -46,9 +46,7 @@ func TestRequest_GetApplePayToken_RawToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetApplePayToken() error: %v", err)
 	}
-	if got == nil || *got != token {
-		t.Fatalf("GetApplePayToken() mismatch: want %q, got %#v", token, got)
-	}
+	assertBase64JSON(t, got, token)
 	if !req.IsApplePay() || !req.IsMobile() {
 		t.Fatalf("expected Apple Pay request to be detected as mobile wallet")
 	}
@@ -68,9 +66,7 @@ func TestRequest_GetApplePayToken_FullPaymentObject(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetApplePayToken() error: %v", err)
 	}
-	if got == nil || *got != token {
-		t.Fatalf("GetApplePayToken() mismatch: want %q, got %#v", token, got)
-	}
+	assertBase64JSON(t, got, token)
 }
 
 func TestRequest_GetApplePayToken_LegacyBase64(t *testing.T) {
@@ -88,9 +84,7 @@ func TestRequest_GetApplePayToken_LegacyBase64(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetAppleContainer() error: %v", err)
 	}
-	if got == nil || *got != token {
-		t.Fatalf("GetAppleContainer() mismatch: want %q, got %#v", token, got)
-	}
+	assertBase64JSON(t, got, token)
 }
 
 func TestRequest_GetGooglePayToken_RawToken(t *testing.T) {
@@ -106,9 +100,7 @@ func TestRequest_GetGooglePayToken_RawToken(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetGooglePayToken() error: %v", err)
 	}
-	if got == nil || *got != token {
-		t.Fatalf("GetGooglePayToken() mismatch: want %q, got %#v", token, got)
-	}
+	assertBase64JSON(t, got, token)
 	if !req.IsGooglePay() || !req.IsMobile() {
 		t.Fatalf("expected Google Pay request to be detected as mobile wallet")
 	}
@@ -130,9 +122,7 @@ func TestRequest_GetGooglePayToken_FullPaymentData(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetGooglePayToken() error: %v", err)
 	}
-	if got == nil || *got != token {
-		t.Fatalf("GetGooglePayToken() mismatch: want %q, got %#v", token, got)
-	}
+	assertBase64JSON(t, got, token)
 }
 
 func TestRequest_GetGooglePayToken_LegacyBase64(t *testing.T) {
@@ -152,7 +142,5 @@ func TestRequest_GetGooglePayToken_LegacyBase64(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetGoogleToken() error: %v", err)
 	}
-	if got == nil || *got != token {
-		t.Fatalf("GetGoogleToken() mismatch: want %q, got %#v", token, got)
-	}
+	assertBase64JSON(t, got, token)
 }
