@@ -30,21 +30,16 @@ import (
 	"testing"
 )
 
-func assertBase64JSON(t *testing.T, got *string, wantJSON string) {
+func assertRawJSON(t *testing.T, got *string, wantJSON string) {
 	t.Helper()
 
 	if got == nil {
 		t.Fatal("expected payment_token to be set")
 	}
 
-	decoded, err := base64.StdEncoding.DecodeString(*got)
-	if err != nil {
-		t.Fatalf("payment_token must be base64: %v", err)
-	}
-
 	var gotObject any
-	if err := json.Unmarshal(decoded, &gotObject); err != nil {
-		t.Fatalf("decoded payment_token must be JSON: %v", err)
+	if err := json.Unmarshal([]byte(*got), &gotObject); err != nil {
+		t.Fatalf("payment_token must be raw JSON: %v", err)
 	}
 
 	var wantObject any
@@ -62,7 +57,7 @@ func assertBase64JSON(t *testing.T, got *string, wantJSON string) {
 	}
 
 	if string(gotCanonical) != string(wantCanonical) {
-		t.Fatalf("decoded payment_token mismatch: want %s, got %s", wantCanonical, gotCanonical)
+		t.Fatalf("payment_token mismatch: want %s, got %s", wantCanonical, gotCanonical)
 	}
 }
 
@@ -76,7 +71,7 @@ func TestNewApplePayMethod_FromToken(t *testing.T) {
 	if method == nil {
 		t.Fatalf("NewApplePayMethod() mismatch: got %#v", method)
 	}
-	assertBase64JSON(t, method.ApplePayToken, token)
+	assertRawJSON(t, method.ApplePayToken, token)
 }
 
 func TestNewApplePayMethod_FromLegacyBase64(t *testing.T) {
@@ -91,7 +86,7 @@ func TestNewApplePayMethod_FromLegacyBase64(t *testing.T) {
 	if method == nil {
 		t.Fatalf("NewApplePayMethod() mismatch: got %#v", method)
 	}
-	assertBase64JSON(t, method.ApplePayToken, token)
+	assertRawJSON(t, method.ApplePayToken, token)
 }
 
 func TestNewGooglePayMethod_FromPaymentData(t *testing.T) {
@@ -107,7 +102,7 @@ func TestNewGooglePayMethod_FromPaymentData(t *testing.T) {
 	if method == nil {
 		t.Fatalf("NewGooglePayMethod() mismatch: got %#v", method)
 	}
-	assertBase64JSON(t, method.GooglePayToken, token)
+	assertRawJSON(t, method.GooglePayToken, token)
 }
 
 func TestNewGooglePayMethod_RejectsEmpty(t *testing.T) {

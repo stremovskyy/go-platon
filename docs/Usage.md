@@ -79,8 +79,8 @@ Runnable example: `examples/card_token/card_token.go`.
 ## Apple Pay / Google Pay
 
 - Use `go_platon.NewApplePayMethod(...)` or `go_platon.NewGooglePayMethod(...)`.
-  These helpers accept the supported client payload shapes and normalize them to the exact
-  base64-encoded `payment_token` format expected by Platon.
+  These helpers accept the supported client payload shapes and normalize them to Platon's
+  raw token `payment_token` format.
 - Apple Pay direct field: set `PaymentMethod.ApplePayToken` to the raw JSON string of
   `event.payment.token` from Apple Pay JS.
 - Apple Pay full payload: set `PaymentMethod.ApplePayPayment` to the raw JSON string of the
@@ -90,7 +90,8 @@ Runnable example: `examples/card_token/card_token.go`.
 - Google Pay full payload: set `PaymentMethod.GooglePayPaymentData` to the raw JSON string of the
   full `paymentData` object. The SDK extracts `tokenizationData.token` automatically.
 - Legacy compatibility: `PaymentMethod.AppleContainer` and `PaymentMethod.GoogleToken`
-  still accept the previous base64-encoded payload format.
+  still accept the previous base64-encoded payload format as input. Outbound
+  `payment_token` values are raw tokens, not base64 wrappers.
 
 Then call `client.Payment(req)` or `client.Hold(req)`.
 

@@ -102,11 +102,11 @@ func normalizeApplePayPayload(raw string) (string, error) {
 	if err := json.Unmarshal([]byte(normalized), &payment); err == nil {
 		token := strings.TrimSpace(string(payment.Token))
 		if token != "" && token != "null" {
-			return base64.StdEncoding.EncodeToString([]byte(token)), nil
+			return token, nil
 		}
 	}
 
-	return base64.StdEncoding.EncodeToString([]byte(normalized)), nil
+	return normalized, nil
 }
 
 func normalizeGooglePayPayload(raw string) (string, error) {
@@ -125,20 +125,11 @@ func normalizeGooglePayPayload(raw string) (string, error) {
 	if err := json.Unmarshal([]byte(normalized), &paymentData); err == nil {
 		token := strings.TrimSpace(paymentData.PaymentMethodData.TokenizationData.Token)
 		if token != "" {
-			return normalizeGooglePayPaymentToken(token)
+			return normalizeGooglePayTokenString(token)
 		}
 	}
 
-	return normalizeGooglePayPaymentToken(normalized)
-}
-
-func normalizeGooglePayPaymentToken(raw string) (string, error) {
-	token, err := normalizeGooglePayTokenString(raw)
-	if err != nil {
-		return "", err
-	}
-
-	return base64.StdEncoding.EncodeToString([]byte(token)), nil
+	return normalizeGooglePayTokenString(normalized)
 }
 
 func normalizeGooglePayTokenString(raw string) (string, error) {
